@@ -1,0 +1,198 @@
+import os
+import uuid
+from pathlib import Path
+from flask import Flask, request, jsonify, render_template
+from ocr_preprocessor import OCRProcessor
+from werkzeug.utils import secure_filename
+
+# PDF → image
+from pdf2image import convert_from_path
+
+app = Flask(__name__)
+
+# Initialize OCR processor
+ocr_processor = OCRProcessor()
+
+# === CONFIG ===
+UPLOAD_DIR = Path(os.environ.get("UPLOAD_DIR", "./uploads"))
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024  # 100 MB
+ALLOWED_EXTS = {"pdf", "jpg", "jpeg", "png"}
+ALLOWED_MIME = {
+    "application/pdf",
+    "application/octet-stream",  # some clients/tools use this
+    "image/jpeg",
+    "image/png",
+}
+
+PDF_DPI = int(os.environ.get("PDF_DPI", "200"))
+PDF_MAX_PAGES = os.environ.get("PDF_MAX_PAGES")  # e.g. "10" to cap pages
+PDF_MAX_PAGES = int(PDF_MAX_PAGES) if PDF_MAX_PAGES else None
+
+# If Poppler executables aren't in PATH, set POPPLER_PATH to the bin folder:
+#   Windows example: set POPPLER_PATH=C:\poppler\bin
+#   Linux/macOS: usually not needed if installed via apt/brew
+POPPLER_PATH = os.environ.get("POPPLER_PATH")
+
+
+def allowed_file(filename: str) -> bool:
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTS
+
+
+@app.route("/")
+def home():
+    return render_template("index.html")
+
+@app.route("/upload", methods=["POST"])
+def upload():
+    if "file" not in request.files:
+        return jsonify({"error": "No file part in form-data (expected key 'file')."}), 400
+
+    f = request.files["file"]
+    if not f.filename:
+        return jsonify({"error": "No file selected."}), 400
+
+    if not allowed_file(f.filename):
+        return jsonify({"error": "Only PDF, JPG, JPEG, PNG allowed."}), 400
+
+    if (f.mimetype or "").lower() not in ALLOWED_MIME:
+        return jsonify({"error": f"Unexpected Content-Type: {f.mimetype}"}), 400
+
+    # Create a unique folder per upload to avoid name clashes
+    base_name = Path(secure_filename(f.filename)).stem
+    token = uuid.uuid4().hex[:8]
+    upload_base = UPLOAD_DIR / f"{base_name}-{token}"
+    upload_base.mkdir(parents=True, exist_ok=True)
+
+    # Save original file
+    ext = f.filename.rsplit(".", 1)[1].lower()
+    original_path = upload_base / f"original.{ext}"
+    try:
+        f.save(original_path)
+    except Exception as e:
+        return jsonify({"error": f"Failed to save file: {e}"}), 500
+
+    # If image, just return the saved path
+    if ext in {"jpg", "jpeg", "png"}:
+        return jsonify({
+            "message": "Upload ok (image).",
+            "original": str(original_path),
+            "type": "image",
+        }), 200
+
+    # If PDF, convert pages to PNG
+    pages_dir = upload_base / "pages"
+    pages_dir.mkdir(exist_ok=True)
+
+    try:
+        # Convert PDF → PIL images
+        pages = convert_from_path(
+            str(original_path),
+            dpi=PDF_DPI,
+            poppler_path=POPPLER_PATH  # None uses PATH; string points to poppler bin
+        )
+
+        if PDF_MAX_PAGES is not None:
+            pages = pages[:PDF_MAX_PAGES]
+
+        page_paths = []
+        for i, page in enumerate(pages, start=1):
+            out_path = pages_dir / f"page_{i:03d}.png"
+            page.save(out_path, "PNG")
+            page_paths.append(str(out_path))
+
+        return jsonify({
+            "message": "Upload ok (pdf converted).",
+            "original": str(original_path),
+            "type": "pdf",
+            "pages": page_paths,
+            "page_count": len(page_paths)
+        }), 200
+
+    except Exception as e:
+        # Common cause: Poppler missing/not in PATH
+        hint = (
+            "Install Poppler and/or set POPPLER_PATH. "
+            "Ubuntu: apt install poppler-utils; macOS: brew install poppler; "
+            "Windows: download build and set POPPLER_PATH to its 'bin' folder."
+        )
+        return jsonify({
+            "error": f"Error converting PDF to images: {e}",
+            "hint": hint
+        }), 500
+
+
+@app.route("/upload-document", methods=["POST"])
+def upload_document():
+    if "file" not in request.files:
+        return jsonify({"error": "No file part in form-data (expected key 'file')."}), 400
+
+    f = request.files["file"]
+    if not f.filename:
+        return jsonify({"error": "No file selected."}), 400
+
+    if not allowed_file(f.filename):
+        return jsonify({"error": "Only PDF, JPG, JPEG, PNG allowed."}), 400
+
+    # Create a unique folder per upload to avoid name clashes
+    base_name = Path(secure_filename(f.filename)).stem
+    token = uuid.uuid4().hex[:8]
+    upload_base = UPLOAD_DIR / f"{base_name}-{token}"
+    upload_base.mkdir(parents=True, exist_ok=True)
+
+    # Save original file
+    ext = f.filename.rsplit(".", 1)[1].lower()
+    original_path = upload_base / f"original.{ext}"
+    try:
+        f.save(original_path)
+    except Exception as e:
+        return jsonify({"error": f"Failed to save file: {e}"}), 500
+
+    image_paths = []
+    
+    # If image, use it directly
+    if ext in {"jpg", "jpeg", "png"}:
+        image_paths.append(str(original_path))
+    else:
+        # If PDF, convert pages to PNG
+        pages_dir = upload_base / "pages"
+        pages_dir.mkdir(exist_ok=True)
+
+        try:
+            # Convert PDF → PIL images
+            pages = convert_from_path(
+                str(original_path),
+                dpi=PDF_DPI,
+                poppler_path=POPPLER_PATH
+            )
+
+            if PDF_MAX_PAGES is not None:
+                pages = pages[:PDF_MAX_PAGES]
+
+            for i, page in enumerate(pages, start=1):
+                out_path = pages_dir / f"page_{i:03d}.png"
+                page.save(out_path, "PNG")
+                image_paths.append(str(out_path))
+
+        except Exception as e:
+            hint = (
+                "Install Poppler and/or set POPPLER_PATH. "
+                "Ubuntu: apt install poppler-utils; macOS: brew install poppler; "
+                "Windows: download build and set POPPLER_PATH to its 'bin' folder."
+            )
+            return jsonify({
+                "error": f"Error converting PDF to images: {e}",
+                "hint": hint
+            }), 500
+
+    # Process images with OCR
+    try:
+        final_results = ocr_processor.process_images(image_paths, f.filename)
+        return jsonify(final_results), 200
+    except Exception as e:
+        return jsonify({"error": f"Error processing images with OCR: {e}"}), 500
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8080, debug=True)
