@@ -189,9 +189,49 @@ def upload_document():
     # Process images with OCR
     try:
         final_results = ocr_processor.process_images(image_paths, f.filename)
-        return jsonify(final_results), 200
+        # Convert Pydantic model to dict for JSON serialization
+        return jsonify(final_results.model_dump()), 200
     except Exception as e:
         return jsonify({"error": f"Error processing images with OCR: {e}"}), 500
+
+
+@app.route("/batch-process", methods=["POST"])
+def batch_process():
+    """Process multiple PDFs from a folder"""
+    if "folder_path" not in request.form:
+        return jsonify({"error": "No folder_path provided in form data"}), 400
+    
+    folder_path = request.form["folder_path"]
+    
+    if not os.path.exists(folder_path):
+        return jsonify({"error": f"Folder does not exist: {folder_path}"}), 400
+    
+    if not os.path.isdir(folder_path):
+        return jsonify({"error": f"Path is not a directory: {folder_path}"}), 400
+    
+    try:
+        from batch_processor import BatchProcessor
+        
+        # Create batch processor
+        processor = BatchProcessor(folder_path)
+        
+        # Get PDF files
+        pdf_files = processor.get_pdf_files()
+        
+        if not pdf_files:
+            return jsonify({"error": f"No PDF files found in: {folder_path}"}), 400
+        
+        # Process batch
+        processor.process_batch()
+        
+        return jsonify({
+            "message": "Batch processing completed successfully",
+            "pdf_count": len(pdf_files),
+            "output_file": str(processor.output_excel)
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": f"Error during batch processing: {e}"}), 500
 
 
 if __name__ == "__main__":

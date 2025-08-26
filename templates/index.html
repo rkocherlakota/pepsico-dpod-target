@@ -38,11 +38,28 @@
 <body>
     <div class="container">
         <h1>Pepsico Document OCR</h1>
-        <p style="text-align: center;">Upload a PDF or an image (JPG, PNG) to extract key information.</p>
-        <form id="uploadForm">
-            <input type="file" id="fileInput" name="file" accept=".pdf, .jpg, .jpeg, .png" required>
-            <button type="submit">Process Document</button>
-        </form>
+        <p style="text-align: center;">Upload a PDF or an image (JPG, PNG) to extract key information, or process multiple PDFs in batch.</p>
+        
+        <!-- Single File Upload -->
+        <div style="margin-bottom: 2em; padding: 1.5em; border: 1px solid #ddd; border-radius: 8px; background-color: #f9f9f9;">
+            <h2>Single Document Processing</h2>
+            <form id="uploadForm">
+                <input type="file" id="fileInput" name="file" accept=".pdf, .jpg, .jpeg, .png" required>
+                <button type="submit">Process Single Document</button>
+            </form>
+        </div>
+
+        <!-- Batch Processing -->
+        <div style="margin-bottom: 2em; padding: 1.5em; border: 1px solid #ddd; border-radius: 8px; background-color: #f9f9f9;">
+            <h2>Batch Processing</h2>
+            <form id="batchForm">
+                <div style="margin-bottom: 1em;">
+                    <label for="folderPath" style="display: block; margin-bottom: 0.5em; font-weight: bold;">Folder Path:</label>
+                    <input type="text" id="folderPath" name="folder_path" placeholder="/path/to/pdf/folder" style="width: 100%; padding: 0.5em; border: 1px solid #ccc; border-radius: 4px;" required>
+                </div>
+                <button type="submit">Process All PDFs in Folder</button>
+            </form>
+        </div>
 
         <div id="preview"></div>
         <div class="spinner" id="loadingSpinner"></div>
@@ -61,6 +78,15 @@
             <div class="result-box" style="margin-top: 1em;">
                 <h3>Full JSON Response</h3>
                 <pre id="jsonOutput"></pre>
+            </div>
+        </div>
+
+        <div id="batchResults" style="display: none;">
+            <h2>Batch Processing Results</h2>
+            <div class="result-box">
+                <div class="result-item"><strong>Status:</strong> <span id="batchStatus"></span></div>
+                <div class="result-item"><strong>PDFs Processed:</strong> <span id="pdfCount"></span></div>
+                <div class="result-item"><strong>Output File:</strong> <span id="outputFile"></span></div>
             </div>
         </div>
     </div>
@@ -103,6 +129,7 @@
 
             const fileInput = document.getElementById('fileInput');
             const resultsDiv = document.getElementById('results');
+            const batchResultsDiv = document.getElementById('batchResults');
             const loadingSpinner = document.getElementById('loadingSpinner');
 
             if (fileInput.files.length === 0) {
@@ -115,6 +142,7 @@
 
             loadingSpinner.style.display = 'block';
             resultsDiv.style.display = 'none';
+            batchResultsDiv.style.display = 'none';
 
             try {
                 const response = await fetch('/upload-document', {
@@ -130,17 +158,64 @@
 
                 const data = await response.json();
                 
-                document.getElementById('invoiceNumber').textContent = data.master_fields.invoice_number || 'Not Found';
-                document.getElementById('storeNumber').textContent = data.master_fields.store_number || 'Not Found';
-                document.getElementById('invoiceDate').textContent = data.master_fields.invoice_date || 'Not Found';
-                document.getElementById('stickerDate').textContent = data.master_fields.sticker_date || 'Not Found';
-                document.getElementById('totalQuantity').textContent = data.master_fields.total_quantity || 'Not Found';
+                document.getElementById('invoiceNumber').textContent = data.master_fields.invoice_number || 'None';
+                document.getElementById('storeNumber').textContent = data.master_fields.store_number || 'None';
+                document.getElementById('invoiceDate').textContent = data.master_fields.invoice_date || 'None';
+                document.getElementById('stickerDate').textContent = data.master_fields.sticker_date || 'None';
+                document.getElementById('totalQuantity').textContent = data.master_fields.total_quantity || 'None';
                 document.getElementById('hasFritoLay').textContent = data.master_fields.has_frito_lay ? 'Yes' : 'No';
                 document.getElementById('hasSignature').textContent = data.master_fields.has_signature ? 'Yes' : 'No';
 
                 document.getElementById('jsonOutput').textContent = JSON.stringify(data, null, 2);
                 
                 resultsDiv.style.display = 'block';
+
+            } catch (error) {
+                alert('An unexpected error occurred: ' + error.message);
+            } finally {
+                loadingSpinner.style.display = 'none';
+            }
+        });
+
+        document.getElementById('batchForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const folderPath = document.getElementById('folderPath').value;
+            const resultsDiv = document.getElementById('results');
+            const batchResultsDiv = document.getElementById('batchResults');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+
+            if (!folderPath.trim()) {
+                alert('Please enter a folder path.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('folder_path', folderPath);
+
+            loadingSpinner.style.display = 'block';
+            resultsDiv.style.display = 'none';
+            batchResultsDiv.style.display = 'none';
+
+            try {
+                const response = await fetch('/batch-process', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert('Error: ' + (error.error || response.statusText));
+                    return;
+                }
+
+                const data = await response.json();
+                
+                document.getElementById('batchStatus').textContent = data.message;
+                document.getElementById('pdfCount').textContent = data.pdf_count;
+                document.getElementById('outputFile').textContent = data.output_file;
+                
+                batchResultsDiv.style.display = 'block';
 
             } catch (error) {
                 alert('An unexpected error occurred: ' + error.message);

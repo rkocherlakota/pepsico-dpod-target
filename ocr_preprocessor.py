@@ -11,6 +11,7 @@ import pandas as pd
 from datetime import datetime
 import openpyxl  # Ensure this is installed
 from config import SERVICE_ACCOUNT_PATH, INFERENCE_OUTPUT_DIR
+from models import InvoiceFields, PageResult, OCRResult, ExcelRow
 
 # Initialize client with credentials
 credentials = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_PATH)
@@ -20,7 +21,7 @@ class OCRProcessor:
     def __init__(self):
         self.client = vision.ImageAnnotatorClient(credentials=credentials)
 
-    def extract_invoice_fields(self, full_text: str) -> dict:
+    def extract_invoice_fields(self, full_text: str) -> InvoiceFields:
         lines = [line.strip() for line in full_text.splitlines() if line.strip()]
 
         def first_match(patterns, text, flags=re.IGNORECASE):
@@ -30,37 +31,67 @@ class OCRProcessor:
                     return m.group(1) if m.lastindex else m.group(0)
             return None
 
+        # Improved invoice number patterns - more specific to avoid false matches
         invoice_patterns = [
-            r"\bINVOICE\s*(?:NO\.?|#|NUMBER)?\s*[:\-]?\s*([A-Z0-9\-]+)\b",
+            r"\bDOCUMENT\s*(?:NO\.?|#|NUMBER)?\s*[:\-]?\s*([A-Z0-9\-]+)\b",  # Document first
+            r"\bINVOICE\s*(?:NO\.?|#|NUMBER)?\s*[:\-]?\s*([A-Z0-9\-]+)\b(?!\s+DATE)",  # Avoid matching "Invoice Date"
             r"\bINV\s*(?:NO\.?|#)?\s*[:\-]?\s*([A-Z0-9\-]+)\b",
-            r"\bDOCUMENT\s*(?:NO\.?|#|NUMBER)?\s*[:\-]?\s*([A-Z0-9\-]+)\b",
         ]
         invoice_number = first_match(invoice_patterns, full_text)
 
+        # Store patterns - only match "Store Number: 2516" format
         store_patterns = [
-            r"\bSTORE\s*#\s*[:\-]?\s*([A-Z0-9\-]{2,})\b",
-            r"\bSTORE\s*NAME\b[^\n#]*#\s*([A-Z0-9\-]{2,})\b",
             r"\bSTORE\s*(?:NUMBER|NO\.?)\s*[:\-]?\s*([A-Z0-9\-]{2,})\b",
         ]
         store_number = first_match(store_patterns, full_text)
 
-        invoice_date_pattern = r"\b(?:0?[1-9]|[12][0-9]|3[01])[\.\-/\s](?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t|tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)[\.\-/\s](?:20)?\d{2}\b"
-        invoice_date_match = re.search(invoice_date_pattern, full_text, flags=re.IGNORECASE)
-        invoice_date = invoice_date_match.group(0) if invoice_date_match else None
+        # Improved date patterns - prioritize MM/DD/YYYY format
+        invoice_date_patterns = [
+            r"\b(?:0?[1-9]|1[0-2])[/\-\.](?:0?[1-9]|[12][0-9]|3[01])[/\-\.](?:20)?\d{2}\b",  # MM/DD/YYYY
+            r"\b(?:0?[1-9]|[12][0-9]|3[01])[\.\-/\s](?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t|tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)[\.\-/\s](?:20)?\d{2}\b",  # DD/MMM/YYYY
+            r"\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t|tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+(?:0?[1-9]|[12][0-9]|3[01]),?\s+(?:20)?\d{2}\b",  # MMM DD, YYYY
+            r"\b(?:20)?\d{2}[/\-\.](?:0?[1-9]|1[0-2])[/\-\.](?:0?[1-9]|[12][0-9]|3[01])\b",  # YYYY/MM/DD
+        ]
+        
+        invoice_date = None
+        for pattern in invoice_date_patterns:
+            match = re.search(pattern, full_text, flags=re.IGNORECASE)
+            if match:
+                invoice_date = match.group(0)
+                break
 
         sticker_date_pattern = r"\b(?:0?[1-9]|1[0-2])[\-/\.](?:0?[1-9]|[12][0-9]|3[01])[\-/\.]((?:20)?\d{2})\b"
         sticker_match = re.search(sticker_date_pattern, full_text)
         sticker_date = sticker_match.group(0) if sticker_match else None
 
+        # Improved quantity patterns
         total_qty = None
         total_qty_patterns = [
             r"\bTOTAL\s*(?:QTY|QUANTITY)\s*[:\-]?\s*([0-9,]+(?:\.[0-9]+)?)\b",
             r"\b(?:QTY|QUANTITY)\s*TOTAL\s*[:\-]?\s*([0-9,]+(?:\.[0-9]+)?)\b",
             r"\bTOTAL\s*[:\-]?\s*([0-9,]+(?:\.[0-9]+)?)\s*(?:QTY|QUANTITY)\b",
+            r"\bTOTAL\s*[:\-]?\s*([0-9,]+(?:\.[0-9]+)?)\b",
+            r"\b(?:QTY|QUANTITY)\s*[:\-]?\s*([0-9,]+(?:\.[0-9]+)?)\b",
+            r"\bAMOUNT\s*[:\-]?\s*([0-9,]+(?:\.[0-9]+)?)\b",
+            r"\bTOTAL\s*EACHES\s*SOLD\s*[:\-]?\s*([0-9,]+(?:\.[0-9]+)?)\b",  # Handle "TOTAL EACHES SOLD: 80"
         ]
+        
+        # First try to find quantity in lines containing quantity keywords
         for line in lines:
-            if re.search(r"\b(QTY|QUANTITY|TOTAL)\b", line, re.IGNORECASE):
+            if re.search(r"\b(QTY|QUANTITY|TOTAL|AMOUNT)\b", line, re.IGNORECASE):
                 candidate = first_match(total_qty_patterns, line)
+                if candidate:
+                    try:
+                        total_qty = float(candidate.replace(',', ''))
+                    except ValueError:
+                        pass
+                    if total_qty is not None:
+                        break
+        
+        # If not found, search in the entire text
+        if total_qty is None:
+            for pattern in total_qty_patterns:
+                candidate = first_match([pattern], full_text)
                 if candidate:
                     try:
                         total_qty = float(candidate.replace(',', ''))
@@ -97,15 +128,31 @@ class OCRProcessor:
         if total_qty is not None and abs(total_qty) < 1e-9:
             total_qty = None
 
-        return {
-            "invoice_number": invoice_number,
-            "store_number": store_number,
-            "invoice_date": invoice_date,
-            "sticker_date": sticker_date,
-            "total_quantity": total_qty,
-            "has_frito_lay": has_frito_lay,
-            "has_signature": has_signature,
-        }
+
+        
+        # Create and validate InvoiceFields object
+        try:
+            return InvoiceFields(
+                invoice_number=invoice_number,
+                store_number=store_number,
+                invoice_date=invoice_date,
+                sticker_date=sticker_date,
+                total_quantity=total_qty,
+                has_frito_lay=has_frito_lay,
+                has_signature=has_signature,
+            )
+        except Exception as e:
+            print(f"Validation error in extract_invoice_fields: {e}")
+            # Return a default object with validation errors logged
+            return InvoiceFields(
+                invoice_number=invoice_number,
+                store_number=store_number,
+                invoice_date=invoice_date,
+                sticker_date=sticker_date,
+                total_quantity=total_qty,
+                has_frito_lay=has_frito_lay,
+                has_signature=has_signature,
+            )
 
     def _normalize_date_string_to_common_format(self, date_str: str) -> str | None:
         if not date_str:
@@ -122,7 +169,7 @@ class OCRProcessor:
                 continue
         return None
 
-    def save_to_excel(self, results: dict, filename: str):
+    def save_to_excel(self, results: OCRResult, filename: str):
         """
         Saves the extracted OCR data to an Excel sheet.
         It reads the existing file, appends the new data, and writes the full
@@ -130,51 +177,33 @@ class OCRProcessor:
         """
         excel_path = os.path.join(INFERENCE_OUTPUT_DIR, "ocr_results.xlsx")
 
-        # Define the desired column order
-        columns = [
-            'filename',
-            'invoice_number',
-            'store_number',
-            'invoice_date',
-            'sticker_date',
-            'total_quantity',
-            'has_frito_lay',
-            'has_signature',
-            'has_sticker',
-            'is_valid'
-        ]
+        # Create ExcelRow from OCRResult
+        try:
+            excel_row = ExcelRow.from_ocr_result(results)
+        except Exception as e:
+            print(f"Error creating ExcelRow from OCRResult: {e}")
+            # Create a failed row
+            excel_row = ExcelRow.from_failed_processing(filename, str(e))
 
-        # Prepare the new data as a single-row DataFrame
-        new_row_data = {
-            'filename': filename,
-            'invoice_number': results['master_fields']['invoice_number'],
-            'store_number': results['master_fields']['store_number'],
-            'invoice_date': self._normalize_date_string_to_common_format(results['master_fields']['invoice_date']),
-            'sticker_date': self._normalize_date_string_to_common_format(results['master_fields']['sticker_date']),
-            'total_quantity': results['master_fields']['total_quantity'],
-            'has_frito_lay': results['master_fields']['has_frito_lay'],
-            'has_signature': results['master_fields']['has_signature'],
-            'has_sticker': results['master_fields']['sticker_date'] is not None,
-            'is_valid': (results['master_fields']['sticker_date'] is not None and results['master_fields']['has_signature'])
-        }
-        
-        new_df = pd.DataFrame([new_row_data])
+        # Convert to DataFrame - all fields are now strings, no conversion needed
+        row_dict = excel_row.model_dump()
+        new_df = pd.DataFrame([row_dict])
 
         try:
             if os.path.exists(excel_path):
                 # Read the existing data
                 existing_df = pd.read_excel(excel_path)
-                # Ensure the existing DataFrame has the correct columns and order
-                for col in columns:
+                # Ensure the existing DataFrame has the correct columns
+                for col in excel_row.__fields__.keys():
                     if col not in existing_df.columns:
                         existing_df[col] = None
-                existing_df = existing_df[columns]
+                existing_df = existing_df[list(excel_row.__fields__.keys())]
 
                 # Append the new DataFrame
                 combined_df = pd.concat([existing_df, new_df], ignore_index=True)
             else:
                 # If the file doesn't exist, start with the new data
-                combined_df = new_df[columns]
+                combined_df = new_df
 
             # Write the entire combined DataFrame back to the Excel file
             combined_df.to_excel(excel_path, index=False)
@@ -183,17 +212,8 @@ class OCRProcessor:
         except Exception as e:
             print(f"Error saving to Excel: {e}")
 
-    def process_images(self, image_paths: list, filename: str):
-        master_fields = {
-            "invoice_number": None,
-            "store_number": None,
-            "invoice_date": None,
-            "sticker_date": None,
-            "total_quantity": None,
-            "has_frito_lay": False,
-            "has_signature": False
-        }
-        
+    def process_images(self, image_paths: list, filename: str) -> OCRResult:
+        master_fields = InvoiceFields()
         fields_found = set()
         all_results = []
         
@@ -208,40 +228,63 @@ class OCRProcessor:
                 page_fields = self.extract_invoice_fields(full_text)
                 
                 page_updates = {}
-                for field_name, field_value in page_fields.items():
-                    if field_name == "has_frito_lay":
-                        if field_value and not master_fields[field_name]:
-                            master_fields[field_name] = field_value
+                # Handle all fields - update if new value is better (not None)
+                for field_name, field_value in page_fields.model_dump().items():
+                    current_value = getattr(master_fields, field_name)
+                    
+                    # Update if:
+                    # 1. Current value is None and new value is not None, OR
+                    # 2. Current value is None/empty and new value is not None/empty
+                    should_update = False
+                    
+                    if current_value is None and field_value is not None:
+                        should_update = True
+                    elif isinstance(current_value, str) and not current_value.strip() and field_value is not None:
+                        should_update = True
+                    elif isinstance(current_value, (int, float)) and current_value == 0 and field_value is not None and field_value != 0:
+                        should_update = True
+                    
+                    if should_update:
+                        setattr(master_fields, field_name, field_value)
+                        if field_name not in fields_found:
                             fields_found.add(field_name)
-                            page_updates[field_name] = "UPDATED"
-                    elif field_name == "has_signature":
-                        if field_value and not master_fields[field_name]:
-                            master_fields[field_name] = field_value
-                            fields_found.add(field_name)
-                            page_updates[field_name] = "UPDATED"
-                    elif field_value is not None and field_name not in fields_found:
-                        master_fields[field_name] = field_value
-                        fields_found.add(field_name)
                         page_updates[field_name] = "UPDATED"
                     else:
                         page_updates[field_name] = "SKIPPED"
                 
-                all_results.append({
-                    "page": page_num + 1,
-                    "page_fields": page_fields,
-                    "updates_applied": page_updates
-                })
+                page_result = PageResult(
+                    page=page_num + 1,
+                    page_fields=page_fields,
+                    updates_applied=page_updates
+                )
+                all_results.append(page_result)
             
             except Exception as e:
                 print(f"Error processing image {image_path}: {e}")
                 continue
 
-        final_results = {
-            "total_pages": len(image_paths),
-            "master_fields": master_fields,
-            "fields_found": list(fields_found),
-            "page_details": all_results
-        }
+        # Create and validate OCRResult
+        try:
+            final_results = OCRResult(
+                filename=filename,
+                total_pages=len(image_paths),
+                master_fields=master_fields,
+                fields_found=list(fields_found),
+                page_details=all_results,
+                processing_status="Success"
+            )
+        except Exception as e:
+            print(f"Error creating OCRResult: {e}")
+            # Create a failed result
+            final_results = OCRResult(
+                filename=filename,
+                total_pages=len(image_paths),
+                master_fields=master_fields,
+                fields_found=list(fields_found),
+                page_details=all_results,
+                processing_status="Failed",
+                error_message=str(e)
+            )
         
         self.save_to_excel(final_results, filename)
 
