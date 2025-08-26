@@ -185,8 +185,14 @@ class OCRProcessor:
             # Create a failed row
             excel_row = ExcelRow.from_failed_processing(filename, str(e))
 
-        # Convert to DataFrame - all fields are now strings, no conversion needed
+        # Convert to DataFrame - ensure boolean values are strings
         row_dict = excel_row.model_dump()
+        
+        # Convert boolean values to strings to avoid Excel TRUE/FALSE
+        for key, value in row_dict.items():
+            if isinstance(value, bool):
+                row_dict[key] = "Yes" if value else "No"
+        
         new_df = pd.DataFrame([row_dict])
 
         try:

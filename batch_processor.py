@@ -131,10 +131,16 @@ class BatchProcessor:
         
         # Convert to DataFrame and save to Excel
         try:
-            # Convert rows to dicts - all fields are now strings, no conversion needed
+            # Convert rows to dicts - ensure boolean values are strings
             row_dicts = []
             for row in excel_rows:
                 row_dict = row.model_dump()
+                
+                # Convert boolean values to strings to avoid Excel TRUE/FALSE
+                for key, value in row_dict.items():
+                    if isinstance(value, bool):
+                        row_dict[key] = "Yes" if value else "No"
+                
                 row_dicts.append(row_dict)
             
             df = pd.DataFrame(row_dicts)
