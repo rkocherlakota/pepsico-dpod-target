@@ -15,14 +15,22 @@ A Flask web application that validates delivery receipts by extracting key infor
 
 ### Extracted Fields
 
-- Invoice Number
-- Store Number
-- Invoice Date
-- Sticker Date
-- Total Quantity
-- Frito Lay presence
-- Signature presence
-- Receipt validity
+- **Filename**: Name of the processed file
+- **Invoice Number**: Extracted invoice number
+- **Store Number**: Extracted store number
+- **Invoice Date**: Extracted invoice date
+- **Sticker Date**: Extracted sticker date
+- **Total Quantity**: Extracted total quantity
+- **Frito Lay**: Whether Frito Lay was found (Yes/No)
+- **Signature**: Whether signature was found (Yes/No)
+- **Sticker**: Whether sticker date was found (Yes/No)
+- **Valid**: Document validity (Valid/Invalid)
+- **Processing Status**: Success/Failed/Partial
+- **Error Message**: Error details if processing failed
+- **Process Type**: Type of processing (Single/Multiple/Folder)
+- **Start Time**: Processing start timestamp (YYYY-MM-DD HH:MM:SS)
+- **End Time**: Processing end timestamp (YYYY-MM-DD HH:MM:SS)
+- **Processing Time**: Processing duration in seconds
 
 ### Output File
 

@@ -138,9 +138,12 @@ class ExcelRow(BaseModel):
     has_signature: bool = Field(False, description="Whether signature was found")
     has_sticker: bool = Field(False, description="Whether sticker date was found")
     is_valid: str = Field("Invalid", description="Document validity (Valid/Invalid)")
-
     processing_status: str = Field("Success", description="Processing status")
     error_message: str = Field("", description="Error message if processing failed")
+    process_type: str = Field("Single", description="Type of processing (Single/Multiple/Folder)")
+    start_time: Optional[str] = Field(None, description="Processing start timestamp")
+    end_time: Optional[str] = Field(None, description="Processing end timestamp")
+    processing_time: Optional[float] = Field(None, description="Processing time in seconds")
 
     @validator('has_frito_lay', 'has_signature', 'has_sticker', pre=True)
     def ensure_boolean_values(cls, v):
@@ -183,7 +186,9 @@ class ExcelRow(BaseModel):
         return 'Invalid'
 
     @classmethod
-    def from_ocr_result(cls, ocr_result: OCRResult) -> 'ExcelRow':
+    def from_ocr_result(cls, ocr_result: OCRResult, process_type: str = "Single", 
+                       start_time: str = None, end_time: str = None, 
+                       processing_time: float = None) -> 'ExcelRow':
         """Create ExcelRow from OCRResult"""
         master_fields = ocr_result.master_fields
         
@@ -210,18 +215,27 @@ class ExcelRow(BaseModel):
             has_signature=master_fields.has_signature,
             has_sticker=has_sticker,
             is_valid=is_valid,
-
             processing_status=ocr_result.processing_status,
-            error_message=ocr_result.error_message
+            error_message=ocr_result.error_message,
+            process_type=process_type,
+            start_time=start_time,
+            end_time=end_time,
+            processing_time=processing_time
         )
 
     @classmethod
-    def from_failed_processing(cls, filename: str, error_message: str) -> 'ExcelRow':
+    def from_failed_processing(cls, filename: str, error_message: str, 
+                              process_type: str = "Single", start_time: str = None, 
+                              end_time: str = None, processing_time: float = None) -> 'ExcelRow':
         """Create ExcelRow for failed processing"""
         return cls(
             filename=filename,
             processing_status="Failed",
-            error_message=error_message
+            error_message=error_message,
+            process_type=process_type,
+            start_time=start_time,
+            end_time=end_time,
+            processing_time=processing_time
         )
 
 

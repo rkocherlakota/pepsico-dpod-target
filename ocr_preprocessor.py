@@ -170,7 +170,8 @@ class OCRProcessor:
                 continue
         return None
 
-    def save_to_excel(self, results: OCRResult, filename: str):
+    def save_to_excel(self, results: OCRResult, filename: str, process_type: str = "Single", 
+                     start_time: str = None, end_time: str = None, processing_time: float = None):
         """
         Saves the extracted OCR data to a single Excel sheet.
         It reads the existing file, appends the new data, and writes the full
@@ -180,11 +181,11 @@ class OCRProcessor:
 
         # Create ExcelRow from OCRResult
         try:
-            excel_row = ExcelRow.from_ocr_result(results)
+            excel_row = ExcelRow.from_ocr_result(results, process_type, start_time, end_time, processing_time)
         except Exception as e:
             print(f"Error creating ExcelRow from OCRResult: {e}")
             # Create a failed row
-            excel_row = ExcelRow.from_failed_processing(filename, str(e))
+            excel_row = ExcelRow.from_failed_processing(filename, str(e), process_type, start_time, end_time, processing_time)
 
         # Convert to DataFrame - ensure boolean values are strings
         row_dict = excel_row.model_dump()

@@ -191,7 +191,23 @@ def upload_document():
 
     # Process images with OCR
     try:
+        import time
+        from datetime import datetime
+        
+        # Record start time
+        start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        start_timestamp = time.time()
+        
         final_results = ocr_processor.process_images(image_paths, f.filename)
+        
+        # Record end time
+        end_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        end_timestamp = time.time()
+        processing_time = end_timestamp - start_timestamp
+        
+        # Save to Excel with timing information
+        ocr_processor.save_to_excel(final_results, f.filename, "Single", start_time, end_time, processing_time)
+        
         # Convert Pydantic model to dict for JSON serialization
         return jsonify(final_results.model_dump()), 200
     except Exception as e:
@@ -230,6 +246,12 @@ def batch_process_files():
         
         for f in pdf_files:
             try:
+                # Record start time for this file
+                import time
+                from datetime import datetime
+                start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                start_timestamp = time.time()
+                
                 # Create a unique temporary directory for this file
                 with tempfile.TemporaryDirectory() as temp_dir:
                     # Save the PDF file
@@ -257,6 +279,17 @@ def batch_process_files():
                     
                     # Process with OCR
                     result = ocr_processor.process_images(image_paths, f.filename)
+                    
+                    # Record end time for this file
+                    end_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    end_timestamp = time.time()
+                    processing_time = end_timestamp - start_timestamp
+                    
+                    # Add timing information to result
+                    result.start_time = start_time
+                    result.end_time = end_time
+                    result.processing_time = processing_time
+                    
                     all_results.append(result)
                     successful += 1
                     
@@ -281,14 +314,20 @@ def batch_process_files():
         excel_rows = []
         for result in all_results:
             try:
-                excel_row = ExcelRow.from_ocr_result(result)
+                # Get timing information from result
+                start_time = getattr(result, 'start_time', None)
+                end_time = getattr(result, 'end_time', None)
+                processing_time = getattr(result, 'processing_time', None)
+                
+                excel_row = ExcelRow.from_ocr_result(result, "Multiple", start_time, end_time, processing_time)
                 excel_rows.append(excel_row)
             except Exception as e:
                 print(f"Error creating ExcelRow: {e}")
                 # Create a failed row
                 excel_row = ExcelRow.from_failed_processing(
                     result.filename if hasattr(result, 'filename') else 'Unknown',
-                    str(e)
+                    str(e),
+                    "Multiple"
                 )
                 excel_rows.append(excel_row)
         

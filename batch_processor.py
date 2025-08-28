@@ -113,11 +113,17 @@ class BatchProcessor:
             
             try:
                 if hasattr(result, 'master_fields'):  # OCRResult object
-                    excel_row = ExcelRow.from_ocr_result(result)
+                    # Get timing information from result
+                    start_time = getattr(result, 'start_time', None)
+                    end_time = getattr(result, 'end_time', None)
+                    processing_time = getattr(result, 'processing_time', None)
+                    
+                    excel_row = ExcelRow.from_ocr_result(result, "Folder", start_time, end_time, processing_time)
                 else:  # Failed result dict
                     excel_row = ExcelRow.from_failed_processing(
                         result.get('filename', 'Unknown'),
-                        result.get('error_message', 'Unknown error')
+                        result.get('error_message', 'Unknown error'),
+                        "Folder"
                     )
                 excel_rows.append(excel_row)
             except Exception as e:
@@ -203,11 +209,26 @@ class BatchProcessor:
             print(f"[{i}/{len(pdf_files)}] Processing: {pdf_path.name}")
             
             try:
+                # Record start time for this file
+                from datetime import datetime
+                start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                start_timestamp = time.time()
+                
                 result = self.process_single_pdf(pdf_path)
                 if result:
                     # Add filename to result if it's an OCRResult object
                     if hasattr(result, 'filename'):
                         result.filename = pdf_path.name
+                    
+                    # Add timing information to result
+                    end_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    end_timestamp = time.time()
+                    processing_time = end_timestamp - start_timestamp
+                    
+                    result.start_time = start_time
+                    result.end_time = end_time
+                    result.processing_time = processing_time
+                    
                     all_results.append(result)
                     successful += 1
                     print(f"✓ Success: {pdf_path.name}")
