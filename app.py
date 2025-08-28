@@ -220,9 +220,8 @@ def batch_process_files():
         output_dir = Path("inference_output")
         output_dir.mkdir(exist_ok=True)
         
-        # Create output Excel file
-        timestamp = int(time.time())
-        output_excel = output_dir / f"batch_results_{timestamp}.xlsx"
+        # Create output Excel file - use single file for all results
+        output_excel = output_dir / "dpod_target_results.xlsx"
         
         # Process each PDF file individually
         all_results = []
@@ -293,7 +292,7 @@ def batch_process_files():
                 )
                 excel_rows.append(excel_row)
         
-        # Convert to DataFrame and save
+        # Convert to DataFrame and save - append to existing file if it exists
         import pandas as pd
         row_dicts = []
         for row in excel_rows:
@@ -304,8 +303,31 @@ def batch_process_files():
                     row_dict[key] = "Yes" if value else "No"
             row_dicts.append(row_dict)
         
-        df = pd.DataFrame(row_dicts)
-        df.to_excel(output_excel, index=False)
+        new_df = pd.DataFrame(row_dicts)
+        
+        try:
+            if output_excel.exists():
+                # Read the existing data
+                existing_df = pd.read_excel(output_excel)
+                # Ensure the existing DataFrame has the correct columns
+                for col in new_df.columns:
+                    if col not in existing_df.columns:
+                        existing_df[col] = None
+                existing_df = existing_df[list(new_df.columns)]
+                
+                # Append the new DataFrame
+                combined_df = pd.concat([existing_df, new_df], ignore_index=True)
+            else:
+                # If the file doesn't exist, start with the new data
+                combined_df = new_df
+            
+            # Write the entire combined DataFrame back to the Excel file
+            combined_df.to_excel(output_excel, index=False)
+            
+        except Exception as e:
+            print(f"Error appending to Excel: {e}")
+            # Fallback: save as new file
+            new_df.to_excel(output_excel, index=False)
         
         return jsonify({
             "message": f"Batch processing completed. Success: {successful}, Failed: {failed}",

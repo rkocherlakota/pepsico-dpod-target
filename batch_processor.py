@@ -17,7 +17,7 @@ class BatchProcessor:
         # Use default output path if not specified
         if output_excel is None:
             from config import INFERENCE_OUTPUT_DIR
-            self.output_excel = Path(INFERENCE_OUTPUT_DIR) / "batch_ocr_results.xlsx"
+            self.output_excel = Path(INFERENCE_OUTPUT_DIR) / "dpod_target_results.xlsx"
         else:
             self.output_excel = Path(output_excel)
         
@@ -129,7 +129,7 @@ class BatchProcessor:
                 )
                 excel_rows.append(excel_row)
         
-        # Convert to DataFrame and save to Excel
+        # Convert to DataFrame and save to Excel - append to existing file
         try:
             # Convert rows to dicts - ensure boolean values are strings
             row_dicts = []
@@ -143,8 +143,26 @@ class BatchProcessor:
                 
                 row_dicts.append(row_dict)
             
-            df = pd.DataFrame(row_dicts)
-            df.to_excel(self.output_excel, index=False)
+            new_df = pd.DataFrame(row_dicts)
+            
+            # Check if file exists and append to it
+            if self.output_excel.exists():
+                # Read the existing data
+                existing_df = pd.read_excel(self.output_excel)
+                # Ensure the existing DataFrame has the correct columns
+                for col in new_df.columns:
+                    if col not in existing_df.columns:
+                        existing_df[col] = None
+                existing_df = existing_df[list(new_df.columns)]
+                
+                # Append the new DataFrame
+                combined_df = pd.concat([existing_df, new_df], ignore_index=True)
+            else:
+                # If the file doesn't exist, start with the new data
+                combined_df = new_df
+            
+            # Write the entire combined DataFrame back to the Excel file
+            combined_df.to_excel(self.output_excel, index=False)
             
             print(f"Batch results saved to: {self.output_excel}")
             print(f"Processed {len(excel_rows)} files successfully")

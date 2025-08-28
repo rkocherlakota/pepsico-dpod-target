@@ -172,11 +172,11 @@ class OCRProcessor:
 
     def save_to_excel(self, results: OCRResult, filename: str):
         """
-        Saves the extracted OCR data to an Excel sheet.
+        Saves the extracted OCR data to a single Excel sheet.
         It reads the existing file, appends the new data, and writes the full
         DataFrame back to ensure correct column alignment.
         """
-        excel_path = os.path.join(INFERENCE_OUTPUT_DIR, "ocr_results.xlsx")
+        excel_path = os.path.join(INFERENCE_OUTPUT_DIR, "dpod_target_results.xlsx")
 
         # Create ExcelRow from OCRResult
         try:

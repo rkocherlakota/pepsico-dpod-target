@@ -8,7 +8,7 @@ A Flask web application that validates delivery receipts by extracting key infor
 - **Batch Processing**: Process multiple delivery receipts from a folder at once
 - **Automatic PDF to image conversion** using Poppler
 - **Google Cloud Vision OCR** text extraction
-- **Excel Output**: Results automatically saved to Excel files with structured data
+- **Single Excel Output**: All results automatically saved to a single Excel file (`dpod_target_results.xlsx`) with structured data
 - **Data Validation**: Pydantic models ensure data integrity and consistency
 - **Progress Tracking**: Real-time progress updates during batch processing
 - **Error Handling**: Comprehensive error handling with validation feedback
@@ -23,6 +23,15 @@ A Flask web application that validates delivery receipts by extracting key infor
 - Frito Lay presence
 - Signature presence
 - Receipt validity
+
+### Output File
+
+All results are saved to a single Excel file: `inference_output/dpod_target_results.xlsx`
+
+- **Single Receipt Processing**: Results are appended to the existing file
+- **Batch Processing**: All results are appended to the same file
+- **Data Consistency**: All processing sessions maintain the same file structure
+- **Easy Management**: One file contains all validation results
 
 ## Prerequisites
 
@@ -95,7 +104,7 @@ SERVICE_ACCOUNT_PATH = "your-credentials-file.json"
    - Choose files or enter folder path containing your delivery receipt PDFs
    - Click "Validate Multiple Receipts" or "Process Folder"
    - Wait for processing to complete
-   - Results will be saved to `inference_output/batch_ocr_results.xlsx`
+   - Results will be saved to `inference_output/dpod_target_results.xlsx`
 
 ### Method 3: Command Line Interface (Batch Processing)
 
