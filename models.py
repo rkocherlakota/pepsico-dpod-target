@@ -87,6 +87,9 @@ class PageResult(BaseModel):
     updates_applied: Dict[str, str] = Field(..., description="Which fields were updated from this page")
 
 
+
+
+
 class OCRResult(BaseModel):
     """Model for complete OCR processing result"""
     filename: str = Field(..., description="Name of the processed file")
@@ -135,6 +138,7 @@ class ExcelRow(BaseModel):
     has_signature: bool = Field(False, description="Whether signature was found")
     has_sticker: bool = Field(False, description="Whether sticker date was found")
     is_valid: str = Field("Invalid", description="Document validity (Valid/Invalid)")
+
     processing_status: str = Field("Success", description="Processing status")
     error_message: str = Field("", description="Error message if processing failed")
 
@@ -193,6 +197,8 @@ class ExcelRow(BaseModel):
         else:
             is_valid = "Invalid"
         
+
+        
         return cls(
             filename=ocr_result.filename,
             invoice_number=master_fields.invoice_number,
@@ -204,6 +210,7 @@ class ExcelRow(BaseModel):
             has_signature=master_fields.has_signature,
             has_sticker=has_sticker,
             is_valid=is_valid,
+
             processing_status=ocr_result.processing_status,
             error_message=ocr_result.error_message
         )

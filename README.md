@@ -1,11 +1,11 @@
-# Pepsico Document OCR Extractor
+# DPOD - Target
 
-A Flask web application that extracts key information from Pepsico documents using Google Cloud Vision OCR. Supports both single document processing and batch processing of multiple PDF files.
+A Flask web application that validates delivery receipts by extracting key information using Google Cloud Vision OCR. Supports both single receipt processing and batch processing of multiple PDF files.
 
 ## Features
 
-- **Single Document Processing**: Upload individual PDF or image files (JPG, PNG)
-- **Batch Processing**: Process multiple PDFs from a folder at once
+- **Single Receipt Processing**: Upload individual delivery receipt files (PDF, JPG, PNG)
+- **Batch Processing**: Process multiple delivery receipts from a folder at once
 - **Automatic PDF to image conversion** using Poppler
 - **Google Cloud Vision OCR** text extraction
 - **Excel Output**: Results automatically saved to Excel files with structured data
@@ -22,7 +22,7 @@ A Flask web application that extracts key information from Pepsico documents usi
 - Total Quantity
 - Frito Lay presence
 - Signature presence
-- Document validity
+- Receipt validity
 
 ## Prerequisites
 
@@ -35,7 +35,7 @@ A Flask web application that extracts key information from Pepsico documents usi
 1. **Clone the repository**
    ```bash
    git clone <your-repo-url>
-   cd pepsico_ocr
+   cd dpod-target
    ```
 
 2. **Create a virtual environment**
@@ -70,7 +70,7 @@ SERVICE_ACCOUNT_PATH = "your-credentials-file.json"
 
 ## Usage
 
-### Method 1: Web Interface (Single Document)
+### Method 1: Web Interface (Single Receipt)
 
 1. **Start the application**
    ```bash
@@ -81,23 +81,25 @@ SERVICE_ACCOUNT_PATH = "your-credentials-file.json"
 2. **Access the web interface**
    - Open your browser and go to: http://localhost:8080
 
-3. **Upload documents**
-   - Click "Choose File" and select a PDF or image file
-   - Click "Process Document"
-   - View the extracted information
+3. **Upload delivery receipts**
+   - Select "Single Receipt" from the dropdown
+   - Choose a PDF or image file
+   - Click "Validate Single Receipt"
+   - View the validation results
 
 ### Method 2: Web Interface (Batch Processing)
 
 1. Start the Flask application as above
 2. Use the "Batch Processing" section:
-   - Enter the folder path containing your PDF files
-   - Click "Process All PDFs in Folder"
+   - Select "Multiple Receipts" or "Process Folder" from the dropdown
+   - Choose files or enter folder path containing your delivery receipt PDFs
+   - Click "Validate Multiple Receipts" or "Process Folder"
    - Wait for processing to complete
    - Results will be saved to `inference_output/batch_ocr_results.xlsx`
 
 ### Method 3: Command Line Interface (Batch Processing)
 
-Use the standalone batch processor script:
+Use the standalone batch processor script for delivery receipts:
 
 ```bash
 python3 batch_processor.py /path/to/pdf/folder

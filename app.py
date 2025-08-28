@@ -1,5 +1,8 @@
 import os
 import uuid
+import time
+import tempfile
+import shutil
 from pathlib import Path
 from flask import Flask, request, jsonify, render_template
 from ocr_preprocessor import OCRProcessor
@@ -193,6 +196,125 @@ def upload_document():
         return jsonify(final_results.model_dump()), 200
     except Exception as e:
         return jsonify({"error": f"Error processing images with OCR: {e}"}), 500
+
+
+@app.route("/batch-process-files", methods=["POST"])
+def batch_process_files():
+    """Process multiple PDF files uploaded via form"""
+    if "files" not in request.files:
+        return jsonify({"error": "No files provided"}), 400
+    
+    files = request.files.getlist("files")
+    
+    if not files or all(f.filename == "" for f in files):
+        return jsonify({"error": "No files selected"}), 400
+    
+    # Filter for PDF files
+    pdf_files = [f for f in files if f.filename.lower().endswith('.pdf')]
+    
+    if not pdf_files:
+        return jsonify({"error": "No PDF files found in selection"}), 400
+    
+    try:
+        # Create output directory
+        output_dir = Path("inference_output")
+        output_dir.mkdir(exist_ok=True)
+        
+        # Create output Excel file
+        timestamp = int(time.time())
+        output_excel = output_dir / f"batch_results_{timestamp}.xlsx"
+        
+        # Process each PDF file individually
+        all_results = []
+        successful = 0
+        failed = 0
+        
+        for f in pdf_files:
+            try:
+                # Create a unique temporary directory for this file
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    # Save the PDF file
+                    pdf_path = os.path.join(temp_dir, secure_filename(f.filename))
+                    f.save(pdf_path)
+                    
+                    # Process the PDF using OCR processor directly
+                    from ocr_preprocessor import OCRProcessor
+                    ocr_processor = OCRProcessor()
+                    
+                    # Convert PDF to images
+                    from pdf2image import convert_from_path
+                    pages = convert_from_path(
+                        pdf_path,
+                        dpi=200,
+                        poppler_path=os.environ.get("POPPLER_PATH")
+                    )
+                    
+                    # Save pages as images
+                    image_paths = []
+                    for i, page in enumerate(pages, start=1):
+                        img_path = os.path.join(temp_dir, f"page_{i:03d}.png")
+                        page.save(img_path, "PNG")
+                        image_paths.append(img_path)
+                    
+                    # Process with OCR
+                    result = ocr_processor.process_images(image_paths, f.filename)
+                    all_results.append(result)
+                    successful += 1
+                    
+            except Exception as e:
+                print(f"Error processing {f.filename}: {e}")
+                failed += 1
+                # Create a failed result
+                from models import OCRResult, InvoiceFields
+                failed_result = OCRResult(
+                    filename=f.filename,
+                    total_pages=0,
+                    master_fields=InvoiceFields(),
+                    fields_found=[],
+                    page_details=[],
+                    processing_status="Failed",
+                    error_message=str(e)
+                )
+                all_results.append(failed_result)
+        
+        # Save results to Excel
+        from models import ExcelRow
+        excel_rows = []
+        for result in all_results:
+            try:
+                excel_row = ExcelRow.from_ocr_result(result)
+                excel_rows.append(excel_row)
+            except Exception as e:
+                print(f"Error creating ExcelRow: {e}")
+                # Create a failed row
+                excel_row = ExcelRow.from_failed_processing(
+                    result.filename if hasattr(result, 'filename') else 'Unknown',
+                    str(e)
+                )
+                excel_rows.append(excel_row)
+        
+        # Convert to DataFrame and save
+        import pandas as pd
+        row_dicts = []
+        for row in excel_rows:
+            row_dict = row.model_dump()
+            # Convert boolean values to strings to avoid Excel TRUE/FALSE
+            for key, value in row_dict.items():
+                if isinstance(value, bool):
+                    row_dict[key] = "Yes" if value else "No"
+            row_dicts.append(row_dict)
+        
+        df = pd.DataFrame(row_dicts)
+        df.to_excel(output_excel, index=False)
+        
+        return jsonify({
+            "message": f"Batch processing completed. Success: {successful}, Failed: {failed}",
+            "pdf_count": len(pdf_files),
+            "output_file": str(output_excel)
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": f"Error during batch processing: {e}"}), 500
 
 
 @app.route("/batch-process", methods=["POST"])

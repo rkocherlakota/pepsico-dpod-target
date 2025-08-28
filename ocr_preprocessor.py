@@ -10,6 +10,7 @@ import os
 import pandas as pd
 from datetime import datetime
 import openpyxl  # Ensure this is installed
+from pathlib import Path
 from config import SERVICE_ACCOUNT_PATH, INFERENCE_OUTPUT_DIR
 from models import InvoiceFields, PageResult, OCRResult, ExcelRow
 
@@ -268,6 +269,8 @@ class OCRProcessor:
             except Exception as e:
                 print(f"Error processing image {image_path}: {e}")
                 continue
+
+
 
         # Create and validate OCRResult
         try:
