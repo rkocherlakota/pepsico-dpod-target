@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DPOD - Target | Delivery Receipt Validation</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2em; line-height: 1.6; background-color: #f4f7f9; color: #333; }
+        .container { max-width: 900px; margin: auto; padding: 2em; background-color: #fff; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
+        h1, h2 { text-align: center; color: #1a237e; }
+        #uploadForm { display: flex; flex-direction: column; gap: 1em; padding: 1.5em; border: 2px dashed #007bff; border-radius: 8px; background-color: #e9f5ff; align-items: center; }
+        #uploadForm button { padding: 0.75em 1.5em; border: none; background-color: #007bff; color: white; border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease; }
+        #uploadForm button:hover { background-color: #0056b3; }
+        input[type="file"] { border: 1px solid #ccc; padding: 0.5em; border-radius: 4px; background-color: #fff; }
+        #preview { margin-top: 1em; text-align: center; }
+        #preview img, #preview iframe { max-width: 100%; max-height: 600px; margin-top: 1em; border: 1px solid #ddd; }
+        #results { margin-top: 2em; }
+        .result-box { border: 1px solid #ddd; padding: 1.5em; border-radius: 8px; background-color: #fafafa; }
+        .result-item { margin-bottom: 1em; }
+        .result-item strong { color: #555; }
+        pre { background: #f4f4f4; padding: 1em; border-radius: 5px; white-space: pre-wrap; word-wrap: break-word; font-family: 'Courier New', Courier, monospace; overflow-x: auto; }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #007bff;
+            animation: spin 1s linear infinite;
+            margin: 2em auto;
+            display: none;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        select, input[type="file"], input[type="text"] {
+            transition: border-color 0.3s ease;
+        }
+        
+        select:focus, input[type="file"]:focus, input[type="text"]:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+        
+        button:disabled {
+            background-color: #6c757d !important;
+            cursor: not-allowed;
+        }
+        
+        button:hover:not(:disabled) {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>DPOD - Target</h1>
+        <p style="text-align: center;">Validate delivery receipts by extracting key information using OCR processing.</p>
+        
+        <!-- Unified Processing Form -->
+        <div style="margin-bottom: 2em; padding: 2em; border: 1px solid #ddd; border-radius: 8px; background-color: #f9f9f9;">
+            <h2>Delivery Receipt Processing</h2>
+            <form id="unifiedForm">
+                <!-- Processing Mode Selection -->
+                <div style="margin-bottom: 1.5em;">
+                    <label for="processingMode" style="display: block; margin-bottom: 0.5em; font-weight: bold;">Processing Mode:</label>
+                    <select id="processingMode" name="processing_mode" style="width: 100%; padding: 0.5em; border: 1px solid #ccc; border-radius: 4px; font-size: 16px;" required>
+                        <option value="">Select processing mode...</option>
+                        <option value="single">Single Receipt</option>
+                        <option value="multiple">Multiple Receipts</option>
+                        <option value="folder">Process Folder</option>
+                    </select>
+                </div>
+
+                <!-- Single Document Upload -->
+                <div id="singleUpload" style="display: none; margin-bottom: 1.5em;">
+                    <label for="singleFileInput" style="display: block; margin-bottom: 0.5em; font-weight: bold;">Select Delivery Receipt:</label>
+                    <input type="file" id="singleFileInput" name="file" accept=".pdf, .jpg, .jpeg, .png" style="width: 100%; padding: 0.5em; border: 1px solid #ccc; border-radius: 4px;">
+                    <small style="color: #666;">Supported formats: PDF, JPG, JPEG, PNG</small>
+                </div>
+
+                <!-- Multiple Files Upload -->
+                <div id="multipleUpload" style="display: none; margin-bottom: 1.5em;">
+                    <label for="multipleFileInput" style="display: block; margin-bottom: 0.5em; font-weight: bold;">Select Delivery Receipts:</label>
+                    <input type="file" id="multipleFileInput" name="files" accept=".pdf" multiple style="width: 100%; padding: 0.5em; border: 1px solid #ccc; border-radius: 4px;">
+                    <small style="color: #666;">Hold Ctrl (Windows) or Cmd (Mac) to select multiple files</small>
+                </div>
+
+                <!-- Folder Path Input -->
+                <div id="folderUpload" style="display: none; margin-bottom: 1.5em;">
+                    <label for="folderPathInput" style="display: block; margin-bottom: 0.5em; font-weight: bold;">Folder Path:</label>
+                    <input type="text" id="folderPathInput" name="folder_path" placeholder="Enter the full path to your PDF folder" style="width: 100%; padding: 0.5em; border: 1px solid #ccc; border-radius: 4px;">
+                    <small style="color: #666;">
+                        <strong>How to find folder path:</strong><br>
+                        • macOS: Right-click folder → Hold Option → "Copy as Pathname"<br>
+                        • Windows: Right-click folder → Properties → Copy "Location"<br>
+                        • Example: <code>/Users/username/Documents/pdfs</code>
+                    </small>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" id="submitBtn" style="width: 100%; padding: 1em; background-color: #007bff; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer;" disabled>
+                    Select processing mode first
+                </button>
+            </form>
+        </div>
+
+        <div id="preview"></div>
+        <div class="spinner" id="loadingSpinner"></div>
+
+        <div id="results" style="display: none;">
+            <h2>Receipt Validation Results</h2>
+            <div class="result-box">
+                <div class="result-item"><strong>Invoice Number:</strong> <span id="invoiceNumber"></span></div>
+                <div class="result-item"><strong>Store Number:</strong> <span id="storeNumber"></span></div>
+                <div class="result-item"><strong>Invoice Date:</strong> <span id="invoiceDate"></span></div>
+                <div class="result-item"><strong>Sticker Date:</strong> <span id="stickerDate"></span></div>
+                <div class="result-item"><strong>Total Quantity:</strong> <span id="totalQuantity"></span></div>
+                <div class="result-item"><strong>Frito Lay:</strong> <span id="hasFritoLay"></span></div>
+                <div class="result-item"><strong>Signature:</strong> <span id="hasSignature"></span></div>
+            </div>
+            
+
+            
+            <div class="result-box" style="margin-top: 1em;">
+                <h3>Full JSON Response</h3>
+                <pre id="jsonOutput"></pre>
+            </div>
+        </div>
+
+        <div id="batchResults" style="display: none;">
+            <h2>Batch Validation Results</h2>
+            <div class="result-box">
+                <div class="result-item"><strong>Status:</strong> <span id="batchStatus"></span></div>
+                <div class="result-item"><strong>PDFs Processed:</strong> <span id="pdfCount"></span></div>
+                <div class="result-item"><strong>Output File:</strong> <span id="outputFile"></span></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Processing mode selection handler
+        document.getElementById('processingMode').addEventListener('change', function(event) {
+            const mode = event.target.value;
+            const singleUpload = document.getElementById('singleUpload');
+            const multipleUpload = document.getElementById('multipleUpload');
+            const folderUpload = document.getElementById('folderUpload');
+            const submitBtn = document.getElementById('submitBtn');
+            
+            // Hide all upload sections
+            singleUpload.style.display = 'none';
+            multipleUpload.style.display = 'none';
+            folderUpload.style.display = 'none';
+            
+            // Show relevant section and update button
+            if (mode === 'single') {
+                singleUpload.style.display = 'block';
+                submitBtn.textContent = 'Validate Single Receipt';
+                submitBtn.disabled = false;
+            } else if (mode === 'multiple') {
+                multipleUpload.style.display = 'block';
+                submitBtn.textContent = 'Validate Multiple Receipts';
+                submitBtn.disabled = false;
+            } else if (mode === 'folder') {
+                folderUpload.style.display = 'block';
+                submitBtn.textContent = 'Process Folder';
+                submitBtn.disabled = false;
+            } else {
+                submitBtn.textContent = 'Select processing mode first';
+                submitBtn.disabled = true;
+            }
+        });
+
+        // File preview for single document
+        document.getElementById('singleFileInput').addEventListener('change', function(event) {
+            const previewContainer = document.getElementById('preview');
+            previewContainer.innerHTML = '';
+            
+            const file = event.target.files[0];
+            if (!file) {
+                return;
+            }
+
+            const fileType = file.type;
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                if (fileType.startsWith('image/')) {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.style.maxWidth = '100%';
+                    img.style.height = 'auto';
+                    previewContainer.appendChild(img);
+                } else if (fileType === 'application/pdf') {
+                    const iframe = document.createElement('iframe');
+                    iframe.src = e.target.result;
+                    iframe.style.width = '100%';
+                    iframe.style.height = '400px';
+                    iframe.style.border = 'none';
+                    previewContainer.appendChild(iframe);
+                } else {
+                    previewContainer.textContent = 'Preview not available for this file type.';
+                }
+            };
+
+            reader.readAsDataURL(file);
+        });
+
+        // Unified form submission handler
+        document.getElementById('unifiedForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const mode = document.getElementById('processingMode').value;
+            const resultsDiv = document.getElementById('results');
+            const batchResultsDiv = document.getElementById('batchResults');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+
+            loadingSpinner.style.display = 'block';
+            resultsDiv.style.display = 'none';
+            batchResultsDiv.style.display = 'none';
+
+            try {
+                let response;
+                let formData = new FormData();
+
+                if (mode === 'single') {
+                    const fileInput = document.getElementById('singleFileInput');
+                    if (fileInput.files.length === 0) {
+                        alert('Please select a file to upload.');
+                        return;
+                    }
+                    formData.append('file', fileInput.files[0]);
+                    response = await fetch('/upload-document', { method: 'POST', body: formData });
+                } else if (mode === 'multiple') {
+                    const fileInput = document.getElementById('multipleFileInput');
+                    if (fileInput.files.length === 0) {
+                        alert('Please select at least one PDF file.');
+                        return;
+                    }
+                    for (let i = 0; i < fileInput.files.length; i++) {
+                        formData.append('files', fileInput.files[i]);
+                    }
+                    response = await fetch('/batch-process-files', { method: 'POST', body: formData });
+                } else if (mode === 'folder') {
+                    const folderPath = document.getElementById('folderPathInput').value;
+                    if (!folderPath.trim()) {
+                        alert('Please enter a folder path.');
+                        return;
+                    }
+                    formData.append('folder_path', folderPath);
+                    response = await fetch('/batch-process', { method: 'POST', body: formData });
+                } else {
+                    alert('Please select a processing mode.');
+                    return;
+                }
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert('Error: ' + (error.error || response.statusText));
+                    return;
+                }
+
+                const data = await response.json();
+                
+                if (mode === 'single') {
+                    // Display single document results
+                    document.getElementById('invoiceNumber').textContent = data.master_fields.invoice_number || 'None';
+                    document.getElementById('storeNumber').textContent = data.master_fields.store_number || 'None';
+                    document.getElementById('invoiceDate').textContent = data.master_fields.invoice_date || 'None';
+                    document.getElementById('stickerDate').textContent = data.master_fields.sticker_date || 'None';
+                    document.getElementById('totalQuantity').textContent = data.master_fields.total_quantity || 'None';
+                    document.getElementById('hasFritoLay').textContent = data.master_fields.has_frito_lay ? 'Yes' : 'No';
+                    document.getElementById('hasSignature').textContent = data.master_fields.has_signature ? 'Yes' : 'No';
+                    document.getElementById('jsonOutput').textContent = JSON.stringify(data, null, 2);
+                    resultsDiv.style.display = 'block';
+                } else {
+                    // Display batch processing results
+                    document.getElementById('batchStatus').textContent = data.message;
+                    document.getElementById('pdfCount').textContent = data.pdf_count;
+                    document.getElementById('outputFile').textContent = data.output_file;
+                    batchResultsDiv.style.display = 'block';
+                }
+
+            } catch (error) {
+                alert('An unexpected error occurred: ' + error.message);
+            } finally {
+                loadingSpinner.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

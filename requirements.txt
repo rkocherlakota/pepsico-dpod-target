@@ -1,0 +1,22 @@
+Flask==3.0.3
+pdf2image==1.17.0
+Pillow==10.4.0
+google-cloud-vision
+google-auth
+google-api-core
+opencv-python
+numpy
+pandas
+openpyxl
+pydantic>=2.0.0
+
+# YOLOX
+torch>=1.7
+thop
+ninja
+
+# verified versions
+# pycocotools corresponds to https://github.com/ppwwyyxx/cocoapi
+pycocotools>=2.0.2
+onnx>=1.13.0
+onnx-simplifier==0.4.10
