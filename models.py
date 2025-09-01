@@ -10,7 +10,7 @@ class InvoiceFields(BaseModel):
     store_number: Optional[int] = Field(None, description="Extracted store number")
     invoice_date: Optional[str] = Field(None, description="Extracted invoice date")
     sticker_date: Optional[str] = Field(None, description="Extracted sticker date")
-    total_quantity: Optional[float] = Field(None, description="Extracted total quantity")
+    total_quantity: Optional[Union[float, str]] = Field(None, description="Extracted total quantity")
     has_frito_lay: bool = Field(False, description="Whether Frito Lay was found")
     has_signature: bool = Field(False, description="Whether signature was found")
 
@@ -58,7 +58,7 @@ class InvoiceFields(BaseModel):
 
     @validator('total_quantity')
     def validate_quantity(cls, v):
-        """Validate quantity is a positive number"""
+        """Validate quantity is a valid number (including negative) or preserve special values like 'N/A'"""
         if v is None or v == "" or (isinstance(v, str) and v.strip() == ""):
             return None
         
@@ -66,16 +66,22 @@ class InvoiceFields(BaseModel):
             v = v.strip()
             if not v:
                 return None
+            
+            # Check if it's a special value like 'N/A', 'NA', etc.
+            if v.upper() in ['N/A', 'NA', 'NONE', 'NOT AVAILABLE']:
+                return v  # Preserve the original string value
+            
+            # Try to convert to float for numeric validation
             try:
                 v_float = float(v)
-                if v_float < 0:
-                    return None
+                # Convert negative numbers to absolute values
+                v_float = abs(v_float)
                 return v_float
             except ValueError:
                 return None
         elif isinstance(v, (int, float)):
-            if v < 0:
-                return None
+            # Convert negative numbers to absolute values
+            v = abs(v)
             return float(v)
         return None
 
@@ -211,6 +217,8 @@ class ExcelRow(BaseModel):
             total_quantity = "NA"
         else:
             total_quantity = master_fields.total_quantity
+
+        print(f"total_quantity from ocr_result: {total_quantity}")
         
         return cls(
             filename=ocr_result.filename,

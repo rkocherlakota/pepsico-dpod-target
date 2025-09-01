@@ -10,6 +10,7 @@ import os
 import pandas as pd
 from datetime import datetime
 import openpyxl  # Ensure this is installed
+from openpyxl.styles import Alignment
 from pathlib import Path
 from config import SERVICE_ACCOUNT_PATH, INFERENCE_OUTPUT_DIR
 from models import InvoiceFields, PageResult, OCRResult, ExcelRow
@@ -234,6 +235,7 @@ class OCRProcessor:
         # Create ExcelRow from OCRResult
         try:
             excel_row = ExcelRow.from_ocr_result(results, sticker_flag)
+            print("excel_row from save_to_excel : ", excel_row)
         except Exception as e:
             print(f"Error creating ExcelRow from OCRResult: {e}")
             # Create a failed row
@@ -242,14 +244,15 @@ class OCRProcessor:
         # print("excel_row : ", excel_row)
         # Convert to DataFrame - ensure boolean values are strings
         row_dict = excel_row.model_dump()
-        
+        print("row_dict from save_to_excel after model_dump: ", row_dict)
         # Convert boolean values to strings to avoid Excel TRUE/FALSE
         for key, value in row_dict.items():
             if isinstance(value, bool):
                 row_dict[key] = "Yes" if value else "No"
+                print(f"from save_to_excel => {key} : {row_dict[key]}")
         
         new_df = pd.DataFrame([row_dict])
-        # print("new_df start : ", new_df)
+        print("new_df start ocr results : ", new_df)
 
         try:
             if os.path.exists(excel_path):                # Read the existing data
@@ -261,6 +264,11 @@ class OCRProcessor:
                         existing_df[col] = None
                 existing_df = existing_df[list(excel_row.__fields__.keys())]
 
+                # Fix the total_quantity column type in existing data to preserve "NA" values
+                if 'total_quantity' in existing_df.columns:
+                    # Replace any NaN values with "NA" in existing data, but keep numeric values as numbers
+                    existing_df['total_quantity'] = existing_df['total_quantity'].fillna("NA")
+
                 # Append the new DataFrame
                 combined_df = pd.concat([existing_df, new_df], ignore_index=True)
             else:
@@ -268,8 +276,29 @@ class OCRProcessor:
                 # If the file doesn't exist, start with the new data
                 combined_df = new_df
 
+            print("combined_df ocr results : ", combined_df)
+
             # Write the entire combined DataFrame back to the Excel file
-            combined_df.to_excel(excel_path, index=False)
+            # Ensure total_quantity column preserves "NA" values without converting numeric values to strings
+            if 'total_quantity' in combined_df.columns:
+                # Replace any NaN values with "NA", but preserve the original data types
+                combined_df['total_quantity'] = combined_df['total_quantity'].fillna("NA")
+            
+            # Use ExcelWriter to apply consistent right alignment to total_quantity column
+            with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
+                combined_df.to_excel(writer, index=False, sheet_name='Sheet1')
+                
+                # Get the worksheet to apply formatting
+                worksheet = writer.sheets['Sheet1']
+                
+                # Apply right alignment to total_quantity column if it exists
+                if 'total_quantity' in combined_df.columns:
+                    # Find the column index for total_quantity
+                    col_idx = combined_df.columns.get_loc('total_quantity') + 1  # +1 because Excel columns are 1-indexed
+                    # Apply right alignment to the entire column (including header)
+                    for row in range(1, len(combined_df) + 2):  # +2 because Excel rows are 1-indexed and we have header
+                        cell = worksheet.cell(row=row, column=col_idx)
+                        cell.alignment = openpyxl.styles.Alignment(horizontal='right')
             
             print(f"Data for {filename} successfully saved to {excel_path}")
         except Exception as e:

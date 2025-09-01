@@ -357,6 +357,7 @@ def batch_process_files():
         for result in all_results:
             try:
                 excel_row = ExcelRow.from_ocr_result(result, sticker_flag)
+                # print(f"excel_row : {excel_row}")
                 excel_rows.append(excel_row)
             except Exception as e:
                 print(f"Error creating ExcelRow: {e}")
@@ -377,7 +378,7 @@ def batch_process_files():
                 if isinstance(value, bool):
                     row_dict[key] = "Yes" if value else "No"
             row_dicts.append(row_dict)
-        
+        # print(f"row_dicts : {row_dicts}")
         df = pd.DataFrame(row_dicts)
         df.to_excel(output_excel, index=False)
         
