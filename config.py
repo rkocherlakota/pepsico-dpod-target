@@ -3,6 +3,7 @@
 import os
 
 # Path to your Google Cloud Vision service account file
+<<<<<<< HEAD
 EXP_FILE = "yolox_od/exps/example/custom/yolox_s.py"
 CKPT_PATH = "yolox_od/last_mosaic_epoch_ckpt_100eps.pth",
 # image_path="test.jpeg",
@@ -11,6 +12,8 @@ NMS_THRES = 0.65,
 DEVICE = "cpu",
 
 # Path to your Google Cloud Vision service account file
+=======
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
 SERVICE_ACCOUNT_PATH = "global-lexicon-271715-bbd471224971_PROD.json"
 
 # Output directories

@@ -52,6 +52,7 @@
         button:hover:not(:disabled) {
             background-color: #0056b3;
         }
+<<<<<<< HEAD
         
         /* Table styling */
         #resultsTable {
@@ -104,6 +105,8 @@
             background: #f8d7da;
             color: #721c24;
         }
+=======
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
     </style>
 </head>
 <body>
@@ -122,6 +125,10 @@
                         <option value="">Select processing mode...</option>
                         <option value="single">Single Receipt</option>
                         <option value="multiple">Multiple Receipts</option>
+<<<<<<< HEAD
+=======
+                        <option value="folder">Process Folder</option>
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
                     </select>
                 </div>
 
@@ -139,7 +146,21 @@
                     <small style="color: #666;">Hold Ctrl (Windows) or Cmd (Mac) to select multiple files</small>
                 </div>
 
+<<<<<<< HEAD
 
+=======
+                <!-- Folder Path Input -->
+                <div id="folderUpload" style="display: none; margin-bottom: 1.5em;">
+                    <label for="folderPathInput" style="display: block; margin-bottom: 0.5em; font-weight: bold;">Folder Path:</label>
+                    <input type="text" id="folderPathInput" name="folder_path" placeholder="Enter the full path to your PDF folder" style="width: 100%; padding: 0.5em; border: 1px solid #ccc; border-radius: 4px;">
+                    <small style="color: #666;">
+                        <strong>How to find folder path:</strong><br>
+                        • macOS: Right-click folder → Hold Option → "Copy as Pathname"<br>
+                        • Windows: Right-click folder → Properties → Copy "Location"<br>
+                        • Example: <code>/Users/username/Documents/pdfs</code>
+                    </small>
+                </div>
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
 
                 <!-- Submit Button -->
                 <button type="submit" id="submitBtn" style="width: 100%; padding: 1em; background-color: #007bff; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer;" disabled>
@@ -152,6 +173,7 @@
         <div class="spinner" id="loadingSpinner"></div>
 
         <div id="results" style="display: none;">
+<<<<<<< HEAD
             <h2>Single Receipt Validation Results</h2>
             
             <!-- Summary Statistics -->
@@ -245,6 +267,20 @@
                 <h3>Page Details</h3>
                 <div id="pageDetails"></div>
             </div>
+=======
+            <h2>Receipt Validation Results</h2>
+            <div class="result-box">
+                <div class="result-item"><strong>Invoice Number:</strong> <span id="invoiceNumber"></span></div>
+                <div class="result-item"><strong>Store Number:</strong> <span id="storeNumber"></span></div>
+                <div class="result-item"><strong>Invoice Date:</strong> <span id="invoiceDate"></span></div>
+                <div class="result-item"><strong>Sticker Date:</strong> <span id="stickerDate"></span></div>
+                <div class="result-item"><strong>Total Quantity:</strong> <span id="totalQuantity"></span></div>
+                <div class="result-item"><strong>Frito Lay:</strong> <span id="hasFritoLay"></span></div>
+                <div class="result-item"><strong>Signature:</strong> <span id="hasSignature"></span></div>
+            </div>
+            
+
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
             
             <div class="result-box" style="margin-top: 1em;">
                 <h3>Full JSON Response</h3>
@@ -254,6 +290,7 @@
 
         <div id="batchResults" style="display: none;">
             <h2>Batch Validation Results</h2>
+<<<<<<< HEAD
             
             <!-- Summary Statistics -->
             <div class="result-box" style="margin-bottom: 1.5em;">
@@ -344,6 +381,12 @@
                 <div id="noResults" style="text-align: center; padding: 2em; color: #666; display: none;">
                     <p>No results found matching your search criteria.</p>
                 </div>
+=======
+            <div class="result-box">
+                <div class="result-item"><strong>Status:</strong> <span id="batchStatus"></span></div>
+                <div class="result-item"><strong>PDFs Processed:</strong> <span id="pdfCount"></span></div>
+                <div class="result-item"><strong>Output File:</strong> <span id="outputFile"></span></div>
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
             </div>
         </div>
     </div>
@@ -354,11 +397,19 @@
             const mode = event.target.value;
             const singleUpload = document.getElementById('singleUpload');
             const multipleUpload = document.getElementById('multipleUpload');
+<<<<<<< HEAD
+=======
+            const folderUpload = document.getElementById('folderUpload');
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
             const submitBtn = document.getElementById('submitBtn');
             
             // Hide all upload sections
             singleUpload.style.display = 'none';
             multipleUpload.style.display = 'none';
+<<<<<<< HEAD
+=======
+            folderUpload.style.display = 'none';
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
             
             // Show relevant section and update button
             if (mode === 'single') {
@@ -369,6 +420,13 @@
                 multipleUpload.style.display = 'block';
                 submitBtn.textContent = 'Validate Multiple Receipts';
                 submitBtn.disabled = false;
+<<<<<<< HEAD
+=======
+            } else if (mode === 'folder') {
+                folderUpload.style.display = 'block';
+                submitBtn.textContent = 'Process Folder';
+                submitBtn.disabled = false;
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
             } else {
                 submitBtn.textContent = 'Select processing mode first';
                 submitBtn.disabled = true;
@@ -445,6 +503,17 @@
                         formData.append('files', fileInput.files[i]);
                     }
                     response = await fetch('/batch-process-files', { method: 'POST', body: formData });
+<<<<<<< HEAD
+=======
+                } else if (mode === 'folder') {
+                    const folderPath = document.getElementById('folderPathInput').value;
+                    if (!folderPath.trim()) {
+                        alert('Please enter a folder path.');
+                        return;
+                    }
+                    formData.append('folder_path', folderPath);
+                    response = await fetch('/batch-process', { method: 'POST', body: formData });
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
                 } else {
                     alert('Please select a processing mode.');
                     return;
@@ -459,6 +528,7 @@
                 const data = await response.json();
                 
                 if (mode === 'single') {
+<<<<<<< HEAD
                     try {
                         console.log('Processing single document results:', data);
                         
@@ -572,6 +642,23 @@
                     
                     // Set up the UI functionality
                     await displayBatchResults(data.output_file);
+=======
+                    // Display single document results
+                    document.getElementById('invoiceNumber').textContent = data.master_fields.invoice_number || 'None';
+                    document.getElementById('storeNumber').textContent = data.master_fields.store_number || 'None';
+                    document.getElementById('invoiceDate').textContent = data.master_fields.invoice_date || 'None';
+                    document.getElementById('stickerDate').textContent = data.master_fields.sticker_date || 'None';
+                    document.getElementById('totalQuantity').textContent = data.master_fields.total_quantity || 'None';
+                    document.getElementById('hasFritoLay').textContent = data.master_fields.has_frito_lay ? 'Yes' : 'No';
+                    document.getElementById('hasSignature').textContent = data.master_fields.has_signature ? 'Yes' : 'No';
+                    document.getElementById('jsonOutput').textContent = JSON.stringify(data, null, 2);
+                    resultsDiv.style.display = 'block';
+                } else {
+                    // Display batch processing results
+                    document.getElementById('batchStatus').textContent = data.message;
+                    document.getElementById('pdfCount').textContent = data.pdf_count;
+                    document.getElementById('outputFile').textContent = data.output_file;
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
                     batchResultsDiv.style.display = 'block';
                 }
 
@@ -581,6 +668,7 @@
                 loadingSpinner.style.display = 'none';
             }
         });
+<<<<<<< HEAD
 
         // Global variable to store all results
         let allResults = [];
@@ -1051,6 +1139,8 @@
         function exportSingleToExcel() {
             exportSingleToCSV(); // For now, we'll use CSV format
         }
+=======
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
     </script>
 </body>
 </html>

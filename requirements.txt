@@ -8,6 +8,7 @@ opencv-python
 numpy
 pandas
 openpyxl
+<<<<<<< HEAD
 pydantic>=2.0.0
 
 # YOLOX
@@ -20,3 +21,6 @@ ninja
 pycocotools>=2.0.2
 onnx>=1.13.0
 onnx-simplifier==0.4.10
+=======
+pydantic>=2.0.0
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152

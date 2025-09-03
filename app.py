@@ -7,15 +7,19 @@ from pathlib import Path
 from flask import Flask, request, jsonify, render_template
 from ocr_preprocessor import OCRProcessor
 from werkzeug.utils import secure_filename
+<<<<<<< HEAD
 from yolox_od.inference import run_inference
 import cv2
 import numpy as np
+=======
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
 
 # PDF → image
 from pdf2image import convert_from_path
 
 app = Flask(__name__)
 
+<<<<<<< HEAD
 
 #od related files
 # exp_file="yolox_od/exps/example/custom/yolox_s.py",
@@ -25,6 +29,8 @@ app = Flask(__name__)
 # nms_thres=0.65,
 # device="cpu",
 
+=======
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
 # Initialize OCR processor
 ocr_processor = OCRProcessor()
 
@@ -185,6 +191,7 @@ def upload_document():
             if PDF_MAX_PAGES is not None:
                 pages = pages[:PDF_MAX_PAGES]
 
+<<<<<<< HEAD
             detections_by_img_id = {}
             sticker_flag = False
             signature_flag = False
@@ -217,6 +224,11 @@ def upload_document():
                 cv2.imwrite(out_path, cv_img)
                 cv2.imwrite(out_path_bbox, op_img)
                 # page.save(out_path, "PNG")
+=======
+            for i, page in enumerate(pages, start=1):
+                out_path = pages_dir / f"page_{i:03d}.png"
+                page.save(out_path, "PNG")
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
                 image_paths.append(str(out_path))
 
         except Exception as e:
@@ -230,6 +242,7 @@ def upload_document():
                 "hint": hint
             }), 500
 
+<<<<<<< HEAD
     # print("detections_by_img_id : ", detections_by_img_id)
  
 
@@ -239,6 +252,27 @@ def upload_document():
         print("signature_flag : ", signature_flag)
         final_results = ocr_processor.process_images(image_paths, f.filename, sticker_flag, signature_flag)
                                                    # (image_paths, f.filename, sticker_flag, signature_flag)
+=======
+    # Process images with OCR
+    try:
+        import time
+        from datetime import datetime
+        
+        # Record start time
+        start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        start_timestamp = time.time()
+        
+        final_results = ocr_processor.process_images(image_paths, f.filename)
+        
+        # Record end time
+        end_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        end_timestamp = time.time()
+        processing_time = end_timestamp - start_timestamp
+        
+        # Save to Excel with timing information
+        ocr_processor.save_to_excel(final_results, f.filename, "Single", start_time, end_time, processing_time)
+        
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
         # Convert Pydantic model to dict for JSON serialization
         return jsonify(final_results.model_dump()), 200
     except Exception as e:
@@ -267,8 +301,13 @@ def batch_process_files():
         output_dir = Path("inference_output")
         output_dir.mkdir(exist_ok=True)
         
+<<<<<<< HEAD
         # Create output Excel file - use a single file for all batch results
         output_excel = output_dir / "target_results.xlsx"
+=======
+        # Create output Excel file - use single file for all results
+        output_excel = output_dir / "dpod_target_results.xlsx"
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
         
         # Process each PDF file individually
         all_results = []
@@ -277,6 +316,7 @@ def batch_process_files():
         
         for f in pdf_files:
             try:
+<<<<<<< HEAD
                         # Create a unique temporary directory for this file
                         with tempfile.TemporaryDirectory() as temp_dir:
                             # Save the PDF file
@@ -350,6 +390,54 @@ def batch_process_files():
 
                             all_results.append(result)
                             successful += 1
+=======
+                # Record start time for this file
+                import time
+                from datetime import datetime
+                start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                start_timestamp = time.time()
+                
+                # Create a unique temporary directory for this file
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    # Save the PDF file
+                    pdf_path = os.path.join(temp_dir, secure_filename(f.filename))
+                    f.save(pdf_path)
+                    
+                    # Process the PDF using OCR processor directly
+                    from ocr_preprocessor import OCRProcessor
+                    ocr_processor = OCRProcessor()
+                    
+                    # Convert PDF to images
+                    from pdf2image import convert_from_path
+                    pages = convert_from_path(
+                        pdf_path,
+                        dpi=200,
+                        poppler_path=os.environ.get("POPPLER_PATH")
+                    )
+                    
+                    # Save pages as images
+                    image_paths = []
+                    for i, page in enumerate(pages, start=1):
+                        img_path = os.path.join(temp_dir, f"page_{i:03d}.png")
+                        page.save(img_path, "PNG")
+                        image_paths.append(img_path)
+                    
+                    # Process with OCR
+                    result = ocr_processor.process_images(image_paths, f.filename)
+                    
+                    # Record end time for this file
+                    end_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    end_timestamp = time.time()
+                    processing_time = end_timestamp - start_timestamp
+                    
+                    # Add timing information to result
+                    result.start_time = start_time
+                    result.end_time = end_time
+                    result.processing_time = processing_time
+                    
+                    all_results.append(result)
+                    successful += 1
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
                     
             except Exception as e:
                 print(f"Error processing {f.filename}: {e}")
@@ -372,6 +460,7 @@ def batch_process_files():
         excel_rows = []
         for result in all_results:
             try:
+<<<<<<< HEAD
                 print("result : ", result)
                 # Use the sticker_flag stored with each individual result
                 if hasattr(result, 'sticker_flag'):
@@ -383,13 +472,26 @@ def batch_process_files():
                 print("sticker_flag for this result: ", result_sticker_flag)
                 excel_row = ExcelRow.from_ocr_result(result, result_sticker_flag)
                 print(f"excel_row : {excel_row}")
+=======
+                # Get timing information from result
+                start_time = getattr(result, 'start_time', None)
+                end_time = getattr(result, 'end_time', None)
+                processing_time = getattr(result, 'processing_time', None)
+                
+                excel_row = ExcelRow.from_ocr_result(result, "Multiple", start_time, end_time, processing_time)
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
                 excel_rows.append(excel_row)
             except Exception as e:
                 print(f"Error creating ExcelRow: {e}")
                 # Create a failed row
                 excel_row = ExcelRow.from_failed_processing(
                     result.filename if hasattr(result, 'filename') else 'Unknown',
+<<<<<<< HEAD
                     str(e)
+=======
+                    str(e),
+                    "Multiple"
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
                 )
                 excel_rows.append(excel_row)
         
@@ -401,6 +503,7 @@ def batch_process_files():
             # Convert boolean values to strings to avoid Excel TRUE/FALSE
             for key, value in row_dict.items():
                 if isinstance(value, bool):
+<<<<<<< HEAD
                     if key == 'has_sticker':
                         # has_sticker should reflect the OD model result
                         row_dict[key] = "Yes" if value else "No"
@@ -501,6 +604,41 @@ def batch_process_files():
             "results": results_for_ui,
             "successful": successful,
             "failed": failed
+=======
+                    row_dict[key] = "Yes" if value else "No"
+            row_dicts.append(row_dict)
+        
+        new_df = pd.DataFrame(row_dicts)
+        
+        try:
+            if output_excel.exists():
+                # Read the existing data
+                existing_df = pd.read_excel(output_excel)
+                # Ensure the existing DataFrame has the correct columns
+                for col in new_df.columns:
+                    if col not in existing_df.columns:
+                        existing_df[col] = None
+                existing_df = existing_df[list(new_df.columns)]
+                
+                # Append the new DataFrame
+                combined_df = pd.concat([existing_df, new_df], ignore_index=True)
+            else:
+                # If the file doesn't exist, start with the new data
+                combined_df = new_df
+            
+            # Write the entire combined DataFrame back to the Excel file
+            combined_df.to_excel(output_excel, index=False)
+            
+        except Exception as e:
+            print(f"Error appending to Excel: {e}")
+            # Fallback: save as new file
+            new_df.to_excel(output_excel, index=False)
+        
+        return jsonify({
+            "message": f"Batch processing completed. Success: {successful}, Failed: {failed}",
+            "pdf_count": len(pdf_files),
+            "output_file": str(output_excel)
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
         }), 200
         
     except Exception as e:

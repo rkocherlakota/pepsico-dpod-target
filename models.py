@@ -1,5 +1,9 @@
 from pydantic import BaseModel, Field, validator
+<<<<<<< HEAD
 from typing import Optional, List, Dict, Any, Union
+=======
+from typing import Optional, List, Dict, Any
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
 from datetime import datetime
 import re
 
@@ -10,11 +14,17 @@ class InvoiceFields(BaseModel):
     store_number: Optional[int] = Field(None, description="Extracted store number")
     invoice_date: Optional[str] = Field(None, description="Extracted invoice date")
     sticker_date: Optional[str] = Field(None, description="Extracted sticker date")
+<<<<<<< HEAD
     total_quantity: Optional[Union[float, str]] = Field(None, description="Extracted total quantity")
     has_frito_lay: bool = Field(False, description="Whether Frito Lay was found")
     has_signature: bool = Field(False, description="Whether signature was found")
     has_sticker: bool = Field(False, description="Whether sticker was detected")
     is_valid: str = Field("Invalid", description="Whether the document is valid or invalid")
+=======
+    total_quantity: Optional[float] = Field(None, description="Extracted total quantity")
+    has_frito_lay: bool = Field(False, description="Whether Frito Lay was found")
+    has_signature: bool = Field(False, description="Whether signature was found")
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
 
     @validator('invoice_number', 'store_number', pre=True)
     def validate_and_convert_to_integer(cls, v):
@@ -60,7 +70,11 @@ class InvoiceFields(BaseModel):
 
     @validator('total_quantity')
     def validate_quantity(cls, v):
+<<<<<<< HEAD
         """Validate quantity is a valid number (including negative) or preserve special values like 'N/A'"""
+=======
+        """Validate quantity is a positive number"""
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
         if v is None or v == "" or (isinstance(v, str) and v.strip() == ""):
             return None
         
@@ -68,6 +82,7 @@ class InvoiceFields(BaseModel):
             v = v.strip()
             if not v:
                 return None
+<<<<<<< HEAD
             
             # Check if it's a special value like 'N/A', 'NA', etc.
             if v.upper() in ['N/A', 'NA', 'NONE', 'NOT AVAILABLE']:
@@ -78,12 +93,23 @@ class InvoiceFields(BaseModel):
                 v_float = float(v)
                 # Convert negative numbers to absolute values
                 v_float = abs(v_float)
+=======
+            try:
+                v_float = float(v)
+                if v_float < 0:
+                    return None
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
                 return v_float
             except ValueError:
                 return None
         elif isinstance(v, (int, float)):
+<<<<<<< HEAD
             # Convert negative numbers to absolute values
             v = abs(v)
+=======
+            if v < 0:
+                return None
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
             return float(v)
         return None
 
@@ -107,8 +133,11 @@ class OCRResult(BaseModel):
     page_details: List[PageResult] = Field(..., description="Detailed results for each page")
     processing_status: str = Field("Success", description="Processing status")
     error_message: str = Field("", description="Error message if processing failed")
+<<<<<<< HEAD
     sticker_flag: Optional[bool] = Field(None, description="Sticker detection flag from Object Detection model")
     signature_flag: Optional[bool] = Field(None, description="Signature detection flag from Object Detection model")
+=======
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
 
     @validator('filename')
     def validate_filename(cls, v):
@@ -143,6 +172,7 @@ class ExcelRow(BaseModel):
     store_number: Optional[int] = Field(None, description="Extracted store number")
     invoice_date: Optional[str] = Field(None, description="Extracted invoice date")
     sticker_date: Optional[str] = Field(None, description="Extracted sticker date")
+<<<<<<< HEAD
     total_quantity: Optional[Union[float, str]] = Field(None, description="Extracted total quantity")
     has_frito_lay: bool = Field(False, description="Whether Frito Lay was found")
     has_signature: bool = Field(False, description="Whether signature was found")
@@ -151,6 +181,19 @@ class ExcelRow(BaseModel):
 
     processing_status: str = Field("Success", description="Processing status")
     error_message: str = Field("", description="Error message if processing failed")
+=======
+    total_quantity: Optional[float] = Field(None, description="Extracted total quantity")
+    has_frito_lay: bool = Field(False, description="Whether Frito Lay was found")
+    has_signature: bool = Field(False, description="Whether signature was found")
+    has_sticker: bool = Field(False, description="Whether sticker date was found")
+    is_valid: str = Field("Invalid", description="Document validity (Valid/Invalid)")
+    processing_status: str = Field("Success", description="Processing status")
+    error_message: str = Field("", description="Error message if processing failed")
+    process_type: str = Field("Single", description="Type of processing (Single/Multiple/Folder)")
+    start_time: Optional[str] = Field(None, description="Processing start timestamp")
+    end_time: Optional[str] = Field(None, description="Processing end timestamp")
+    processing_time: Optional[float] = Field(None, description="Processing time in seconds")
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
 
     @validator('has_frito_lay', 'has_signature', 'has_sticker', pre=True)
     def ensure_boolean_values(cls, v):
@@ -193,6 +236,7 @@ class ExcelRow(BaseModel):
         return 'Invalid'
 
     @classmethod
+<<<<<<< HEAD
     def from_ocr_result(cls, ocr_result: OCRResult, sticker_flag) -> 'ExcelRow':
         """Create ExcelRow from OCRResult"""
         master_fields = ocr_result.master_fields
@@ -202,10 +246,25 @@ class ExcelRow(BaseModel):
         
         # Determine is_valid value
         if (has_sticker and master_fields.has_signature):
+=======
+    def from_ocr_result(cls, ocr_result: OCRResult, process_type: str = "Single", 
+                       start_time: str = None, end_time: str = None, 
+                       processing_time: float = None) -> 'ExcelRow':
+        """Create ExcelRow from OCRResult"""
+        master_fields = ocr_result.master_fields
+        
+        # Determine has_sticker value
+        has_sticker = master_fields.sticker_date is not None
+        
+        # Determine is_valid value
+        if (master_fields.sticker_date is not None and 
+            master_fields.has_signature):
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
             is_valid = "Valid"
         else:
             is_valid = "Invalid"
         
+<<<<<<< HEAD
         # Handle date logic - keep both invoice_date and sticker_date separate
         invoice_date = master_fields.invoice_date
         sticker_date = master_fields.sticker_date
@@ -216,18 +275,28 @@ class ExcelRow(BaseModel):
             total_quantity = master_fields.total_quantity
 
         # print(f"total_quantity from ocr_result: {total_quantity}")
+=======
+
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
         
         return cls(
             filename=ocr_result.filename,
             invoice_number=master_fields.invoice_number,
             store_number=master_fields.store_number,
+<<<<<<< HEAD
             invoice_date=invoice_date,
             sticker_date=sticker_date,
             total_quantity=total_quantity,
+=======
+            invoice_date=master_fields.invoice_date,
+            sticker_date=master_fields.sticker_date,
+            total_quantity=master_fields.total_quantity,
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
             has_frito_lay=master_fields.has_frito_lay,
             has_signature=master_fields.has_signature,
             has_sticker=has_sticker,
             is_valid=is_valid,
+<<<<<<< HEAD
 
             processing_status=ocr_result.processing_status,
             error_message=ocr_result.error_message
@@ -235,11 +304,33 @@ class ExcelRow(BaseModel):
 
     @classmethod
     def from_failed_processing(cls, filename: str, error_message: str) -> 'ExcelRow':
+=======
+            processing_status=ocr_result.processing_status,
+            error_message=ocr_result.error_message,
+            process_type=process_type,
+            start_time=start_time,
+            end_time=end_time,
+            processing_time=processing_time
+        )
+
+    @classmethod
+    def from_failed_processing(cls, filename: str, error_message: str, 
+                              process_type: str = "Single", start_time: str = None, 
+                              end_time: str = None, processing_time: float = None) -> 'ExcelRow':
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
         """Create ExcelRow for failed processing"""
         return cls(
             filename=filename,
             processing_status="Failed",
+<<<<<<< HEAD
             error_message=error_message
+=======
+            error_message=error_message,
+            process_type=process_type,
+            start_time=start_time,
+            end_time=end_time,
+            processing_time=processing_time
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
         )
 
 

@@ -67,6 +67,7 @@ Thumbs.db
 *.log
 logs/
 
+<<<<<<< HEAD
 # Model checkpoints and weights
 *.pth
 *.pkl
@@ -83,6 +84,8 @@ logs/
 YOLOX_outputs/
 YOLOX_outputs/
 
+=======
+>>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
 # Environment variables
 .env
 .env.local

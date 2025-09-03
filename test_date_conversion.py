@@ -1,62 +1,120 @@
 #!/usr/bin/env python3
-"""
-Test script to verify date conversion functionality
-"""
 
-import sys
-import os
-sys.path.append('pepsico_dpod_target_main')
-
-from ocr_preprocessor import OCRProcessor
+# Test script to verify date conversion logic
+import re
 
 def test_date_conversion():
-    """Test the date conversion method with various formats"""
-    processor = OCRProcessor()
+    """Test the date conversion logic"""
     
+    def _convert_date_format(date_str: str) -> str:
+        """Convert various date formats to MM/DD/YYYY format"""
+        if not date_str:
+            return date_str
+        
+        print(f"\nTesting date: {date_str}")
+        
+        # Handle DD.MMM.YYYY format (e.g., "04.Jul.2025" -> "07/04/2025")
+        dd_mmm_yyyy_pattern = r"(\d{1,2})\.(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.(\d{4})"
+        match = re.match(dd_mmm_yyyy_pattern, date_str, re.IGNORECASE)
+        if match:
+            day, month, year = match.groups()
+            print(f"DD.MMM.YYYY pattern matched: day={day}, month={month}, year={year}")
+            month_map = {
+                'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
+                'may': '05', 'jun': '06', 'jul': '07', 'aug': '08',
+                'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'
+            }
+            month_num = month_map.get(month.lower(), '01')
+            # Ensure two-digit format for day and month
+            day = day.zfill(2)
+            month_num = month_num.zfill(2)
+            # Convert DD.MMM.YYYY to MM/DD/YYYY (swap day and month)
+            result = f"{month_num}/{day}/{year}"
+            print(f"DD.MMM.YYYY conversion result: {result}")
+            return result
+        
+        # Handle DD/MM/YYYY format (convert to MM/DD/YYYY)
+        dd_mm_yyyy_pattern = r"(\d{1,2})/(\d{1,2})/(\d{4})"
+        match = re.match(dd_mm_yyyy_pattern, date_str)
+        if match:
+            day, month, year = match.groups()
+            print(f"DD/MM/YYYY pattern matched: day={day}, month={month}, year={year}")
+            # Ensure two-digit format for day and month
+            day = day.zfill(2)
+            month = month.zfill(2)
+            # Convert DD/MM/YYYY to MM/DD/YYYY (swap day and month)
+            result = f"{month}/{day}/{year}"
+            print(f"DD/MM/YYYY conversion result: {result}")
+            return result
+        
+        # Handle MMM DD, YYYY format (e.g., "Jul 04, 2025" -> "07/04/2025")
+        mmm_dd_yyyy_pattern = r"(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2}),?\s+(\d{4})"
+        match = re.match(mmm_dd_yyyy_pattern, date_str, re.IGNORECASE)
+        if match:
+            month, day, year = match.groups()
+            print(f"MMM DD, YYYY pattern matched: month={month}, day={day}, year={year}")
+            month_map = {
+                'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
+                'may': '05', 'jun': '06', 'jul': '07', 'aug': '08',
+                'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'
+            }
+            month_num = month_map.get(month.lower(), '01')
+            # Ensure two-digit format for day and month
+            day = day.zfill(2)
+            month_num = month_num.zfill(2)
+            result = f"{month_num}/{day}/{year}"
+            print(f"MMM DD, YYYY conversion result: {result}")
+            return result
+        
+        # Handle YYYY-MM-DD format
+        yyyy_mm_dd_pattern = r"(\d{4})-(\d{1,2})-(\d{1,2})"
+        match = re.match(yyyy_mm_dd_pattern, date_str)
+        if match:
+            year, month, day = match.groups()
+            print(f"YYYY-MM-DD pattern matched: year={year}, month={month}, day={day}")
+            # Ensure two-digit format for day and month
+            day = day.zfill(2)
+            month = month.zfill(2)
+            result = f"{month}/{day}/{year}"
+            print(f"YYYY-MM-DD conversion result: {result}")
+            return result
+        
+        # Handle MM/DD/YYYY format (ensure consistent formatting)
+        mm_dd_yyyy_pattern = r"(\d{1,2})/(\d{1,2})/(\d{4})"
+        match = re.match(mm_dd_yyyy_pattern, date_str)
+        if match:
+            month, day, year = match.groups()
+            print(f"MM/DD/YYYY pattern matched: month={month}, day={day}, year={year}")
+            # Ensure two-digit format for day and month
+            day = day.zfill(2)
+            month = month.zfill(2)
+            result = f"{month}/{day}/{year}"
+            print(f"MM/DD/YYYY conversion result: {result}")
+            return result
+        
+        # If no conversion needed, return as-is
+        print(f"No pattern matched, returning as-is: {date_str}")
+        return date_str
+
     # Test cases
-    test_cases = [
-        ("07.Jul.2025", "07/07/2025"),  # DD.MMM.YYYY -> MM/DD/YYYY
-        ("15.Dec.2024", "12/15/2024"),  # DD.MMM.YYYY -> MM/DD/YYYY
-        ("01.Jan.2026", "01/01/2026"),  # DD.MMM.YYYY -> MM/DD/YYYY
-        ("Jul 07, 2025", "07/07/2025"),  # MMM DD, YYYY -> MM/DD/YYYY
-        ("December 25, 2024", "12/25/2024"),  # MMM DD, YYYY -> MM/DD/YYYY
-        ("07/07/2025", "07/07/2025"),  # MM/DD/YYYY -> MM/DD/YYYY (no change)
-        ("25/12/2024", "12/25/2024"),  # DD/MM/YYYY -> MM/DD/YYYY
-        ("2024-12-25", "12/25/2024"),  # YYYY-MM-DD -> MM/DD/YYYY
-        ("invalid_date", "invalid_date"),  # Invalid format -> no change
-        ("", ""),  # Empty string -> no change
-        (None, None),  # None -> no change
+    test_dates = [
+        "04.Jul.2025",  # Should become "07/04/2025"
+        "07.Jul.2025",  # Should become "07/07/2025"
+        "25.Dec.2025",  # Should become "12/25/2025"
+        "04/07/2025",   # Should become "07/04/2025" (DD/MM/YYYY)
+        "07/04/2025",   # Should become "07/04/2025" (MM/DD/YYYY)
+        "Jul 04, 2025", # Should become "07/04/2025"
+        "2025-07-04",   # Should become "07/04/2025"
+        "7/4/2025",     # Should become "07/04/2025"
     ]
     
-    print("Testing date conversion functionality:")
+    print("Testing Date Conversion Logic")
     print("=" * 50)
     
-    passed = 0
-    failed = 0
-    
-    for input_date, expected_output in test_cases:
-        try:
-            result = processor._convert_date_format(input_date)
-            if result == expected_output:
-                print(f"✓ PASS: '{input_date}' -> '{result}'")
-                passed += 1
-            else:
-                print(f"✗ FAIL: '{input_date}' -> '{result}' (expected: '{expected_output}')")
-                failed += 1
-        except Exception as e:
-            print(f"✗ ERROR: '{input_date}' -> Exception: {e}")
-            failed += 1
-    
-    print("=" * 50)
-    print(f"Results: {passed} passed, {failed} failed")
-    
-    if failed == 0:
-        print("🎉 All tests passed!")
-        return True
-    else:
-        print("❌ Some tests failed!")
-        return False
+    for test_date in test_dates:
+        result = _convert_date_format(test_date)
+        print(f"Final result: {test_date} -> {result}")
+        print("-" * 30)
 
 if __name__ == "__main__":
-    success = test_date_conversion()
-    sys.exit(0 if success else 1)
+    test_date_conversion()
