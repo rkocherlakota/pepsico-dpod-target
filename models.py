@@ -13,6 +13,8 @@ class InvoiceFields(BaseModel):
     total_quantity: Optional[Union[float, str]] = Field(None, description="Extracted total quantity")
     has_frito_lay: bool = Field(False, description="Whether Frito Lay was found")
     has_signature: bool = Field(False, description="Whether signature was found")
+    has_sticker: bool = Field(False, description="Whether sticker was detected")
+    is_valid: str = Field("Invalid", description="Whether the document is valid or invalid")
 
     @validator('invoice_number', 'store_number', pre=True)
     def validate_and_convert_to_integer(cls, v):
@@ -105,6 +107,8 @@ class OCRResult(BaseModel):
     page_details: List[PageResult] = Field(..., description="Detailed results for each page")
     processing_status: str = Field("Success", description="Processing status")
     error_message: str = Field("", description="Error message if processing failed")
+    sticker_flag: Optional[bool] = Field(None, description="Sticker detection flag from Object Detection model")
+    signature_flag: Optional[bool] = Field(None, description="Signature detection flag from Object Detection model")
 
     @validator('filename')
     def validate_filename(cls, v):
@@ -137,14 +141,12 @@ class ExcelRow(BaseModel):
     filename: str = Field(..., description="Name of the processed file")
     invoice_number: Optional[int] = Field(None, description="Extracted invoice number")
     store_number: Optional[int] = Field(None, description="Extracted store number")
-    # invoice_date: Optional[str] = Field(None, description="Extracted invoice date")
-    # sticker_date: Optional[str] = Field(None, description="Extracted sticker date")
-    date: Optional[str] = Field(None, description="Extracted date")
-    # total_quantity: Optional[float] = Field(None, description="Extracted total quantity")
+    invoice_date: Optional[str] = Field(None, description="Extracted invoice date")
+    sticker_date: Optional[str] = Field(None, description="Extracted sticker date")
     total_quantity: Optional[Union[float, str]] = Field(None, description="Extracted total quantity")
     has_frito_lay: bool = Field(False, description="Whether Frito Lay was found")
     has_signature: bool = Field(False, description="Whether signature was found")
-    has_sticker: bool = Field(False, description="Whether sticker date was found")
+    has_sticker: bool = Field(False, description="Whether sticker was detected by OD model")
     is_valid: str = Field("Invalid", description="Document validity (Valid/Invalid)")
 
     processing_status: str = Field("Success", description="Processing status")
@@ -195,8 +197,7 @@ class ExcelRow(BaseModel):
         """Create ExcelRow from OCRResult"""
         master_fields = ocr_result.master_fields
         
-        # Determine has_sticker value
-        # has_sticker = master_fields.sticker_date is not None
+        # Determine has_sticker value from OD model
         has_sticker = sticker_flag
         
         # Determine is_valid value
@@ -205,26 +206,23 @@ class ExcelRow(BaseModel):
         else:
             is_valid = "Invalid"
         
-        if master_fields.invoice_date or master_fields.sticker_date:
-            if master_fields.invoice_date:
-                date = master_fields.invoice_date
-            else:
-                date = master_fields.sticker_date
-        else:
-            date = None
+        # Handle date logic - keep both invoice_date and sticker_date separate
+        invoice_date = master_fields.invoice_date
+        sticker_date = master_fields.sticker_date
 
         if master_fields.total_quantity is None:
             total_quantity = "NA"
         else:
             total_quantity = master_fields.total_quantity
 
-        print(f"total_quantity from ocr_result: {total_quantity}")
+        # print(f"total_quantity from ocr_result: {total_quantity}")
         
         return cls(
             filename=ocr_result.filename,
             invoice_number=master_fields.invoice_number,
             store_number=master_fields.store_number,
-            date=date,
+            invoice_date=invoice_date,
+            sticker_date=sticker_date,
             total_quantity=total_quantity,
             has_frito_lay=master_fields.has_frito_lay,
             has_signature=master_fields.has_signature,

@@ -95,7 +95,7 @@ SERVICE_ACCOUNT_PATH = "your-credentials-file.json"
    - Choose files or enter folder path containing your delivery receipt PDFs
    - Click "Validate Multiple Receipts" or "Process Folder"
    - Wait for processing to complete
-   - Results will be saved to `inference_output/batch_ocr_results.xlsx`
+   - Results will be saved to `inference_output/target_results.xlsx`
 
 ### Method 3: Command Line Interface (Batch Processing)
 
@@ -176,8 +176,7 @@ pepsico_ocr/
 │   └── index.html        # Web interface
 ├── uploads/              # Uploaded files (auto-created)
 ├── inference_output/     # OCR results (auto-created)
-│   ├── ocr_results.xlsx  # Single document results
-│   └── batch_ocr_results.xlsx  # Batch processing results
+│   └── target_results.xlsx  # All processing results (individual and batch)
 └── annotated_images/     # Processed images (auto-created)
 ```
 

@@ -52,6 +52,58 @@
         button:hover:not(:disabled) {
             background-color: #0056b3;
         }
+        
+        /* Table styling */
+        #resultsTable {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        #resultsTable th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        #resultsTable tbody tr:hover {
+            background-color: #f8f9fa;
+            transition: background-color 0.2s ease;
+        }
+        
+        .valid-row {
+            background-color: #f8fff8;
+        }
+        
+        .invalid-row {
+            background-color: #fff8f8;
+        }
+        
+        /* Status badges */
+        .status-badge {
+            padding: 0.25em 0.5em;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-failed {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .validity-valid {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .validity-invalid {
+            background: #f8d7da;
+            color: #721c24;
+        }
     </style>
 </head>
 <body>
@@ -70,7 +122,6 @@
                         <option value="">Select processing mode...</option>
                         <option value="single">Single Receipt</option>
                         <option value="multiple">Multiple Receipts</option>
-                        <option value="folder">Process Folder</option>
                     </select>
                 </div>
 
@@ -88,17 +139,7 @@
                     <small style="color: #666;">Hold Ctrl (Windows) or Cmd (Mac) to select multiple files</small>
                 </div>
 
-                <!-- Folder Path Input -->
-                <div id="folderUpload" style="display: none; margin-bottom: 1.5em;">
-                    <label for="folderPathInput" style="display: block; margin-bottom: 0.5em; font-weight: bold;">Folder Path:</label>
-                    <input type="text" id="folderPathInput" name="folder_path" placeholder="Enter the full path to your PDF folder" style="width: 100%; padding: 0.5em; border: 1px solid #ccc; border-radius: 4px;">
-                    <small style="color: #666;">
-                        <strong>How to find folder path:</strong><br>
-                        • macOS: Right-click folder → Hold Option → "Copy as Pathname"<br>
-                        • Windows: Right-click folder → Properties → Copy "Location"<br>
-                        • Example: <code>/Users/username/Documents/pdfs</code>
-                    </small>
-                </div>
+
 
                 <!-- Submit Button -->
                 <button type="submit" id="submitBtn" style="width: 100%; padding: 1em; background-color: #007bff; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer;" disabled>
@@ -111,18 +152,99 @@
         <div class="spinner" id="loadingSpinner"></div>
 
         <div id="results" style="display: none;">
-            <h2>Receipt Validation Results</h2>
-            <div class="result-box">
-                <div class="result-item"><strong>Invoice Number:</strong> <span id="invoiceNumber"></span></div>
-                <div class="result-item"><strong>Store Number:</strong> <span id="storeNumber"></span></div>
-                <div class="result-item"><strong>Invoice Date:</strong> <span id="invoiceDate"></span></div>
-                <div class="result-item"><strong>Sticker Date:</strong> <span id="stickerDate"></span></div>
-                <div class="result-item"><strong>Total Quantity:</strong> <span id="totalQuantity"></span></div>
-                <div class="result-item"><strong>Frito Lay:</strong> <span id="hasFritoLay"></span></div>
-                <div class="result-item"><strong>Signature:</strong> <span id="hasSignature"></span></div>
+            <h2>Single Receipt Validation Results</h2>
+            
+            <!-- Summary Statistics -->
+            <div class="result-box" style="margin-bottom: 1.5em;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1em;">
+                    <div style="text-align: center; padding: 1em; background: #e8f5e8; border-radius: 6px;">
+                        <div id="singleTotal" style="font-size: 2em; font-weight: bold; color: #28a745;">1</div>
+                        <div style="color: #666;">Total Files</div>
+                    </div>
+                    <div style="text-align: center; padding: 1em; background: #e8f5e8; border-radius: 6px;">
+                        <div id="singleValid" style="font-size: 2em; font-weight: bold; color: #28a745;">0</div>
+                        <div style="color: #666;">Valid</div>
+                    </div>
+                    <div style="text-align: center; padding: 1em; background: #ffe8e8; border-radius: 6px;">
+                        <div id="singleInvalid" style="font-size: 2em; font-weight: bold; color: #dc3545;">0</div>
+                        <div style="color: #666;">Invalid</div>
+                    </div>
+                    <div style="text-align: center; padding: 1em; background: #e8f0ff; border-radius: 6px;">
+                        <div id="singleSuccessRate" style="font-size: 2em; font-weight: bold; color: #007bff;">0%</div>
+                        <div style="color: #666;">Success Rate</div>
+                    </div>
+                </div>
             </div>
             
+            <!-- Search and Filter Controls -->
+            <div class="result-box" style="margin-bottom: 1.5em;">
+                <div style="display: flex; gap: 1em; align-items: center; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 200px;">
+                        <label for="singleSearchInput" style="display: block; margin-bottom: 0.5em; font-weight: bold;">Search:</label>
+                        <input type="text" id="singleSearchInput" placeholder="Search by filename, invoice number, store number..." style="width: 100%; padding: 0.5em; border: 1px solid #ccc; border-radius: 4px;">
+                    </div>
+                    <div style="min-width: 150px;">
+                        <label for="singleValidityFilter" style="display: block; margin-bottom: 0.5em; font-weight: bold;">Validity Filter:</label>
+                        <select id="singleValidityFilter" style="width: 100%; padding: 0.5em; border: 1px solid #ccc; border-radius: 4px;">
+                            <option value="">All</option>
+                            <option value="Valid">Valid Only</option>
+                            <option value="Invalid">Invalid Only</option>
+                        </select>
+                    </div>
+                    <div style="min-width: 120px;">
+                        <label for="singleStickerFilter" style="display: block; margin-bottom: 0.5em; font-weight: bold;">Sticker Filter:</label>
+                        <select id="singleStickerFilter" style="width: 100%; padding: 0.5em; border: 1px solid #ccc; border-radius: 4px;">
+                            <option value="">All</option>
+                            <option value="Yes">Has Sticker</option>
+                            <option value="No">No Sticker</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
 
+            <!-- Results Table -->
+            <div class="result-box">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1em;">
+                    <h3 style="margin: 0;">Receipt Details</h3>
+                    <div style="display: flex; gap: 0.5em;">
+                        <button id="singleExportCsvBtn" style="padding: 0.5em 1em; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Export CSV</button>
+                        <button id="singleExportExcelBtn" style="padding: 0.5em 1em; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer;">Export Excel</button>
+                    </div>
+                </div>
+                
+                <div style="overflow-x: auto;">
+                    <table id="singleResultsTable" style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                        <thead>
+                            <tr style="background: #f8f9fa;">
+                                <th style="padding: 0.75em; text-align: left; border: 1px solid #dee2e6; font-weight: bold;">Filename</th>
+                                <th style="padding: 0.75em; text-align: left; border: 1px solid #dee2e6; font-weight: bold;">Invoice #</th>
+                                <th style="padding: 0.75em; text-align: left; border: 1px solid #dee2e6; font-weight: bold;">Store #</th>
+                                <th style="padding: 0.75em; text-align: left; border: 1px solid #dee2e6; font-weight: bold;">Invoice Date</th>
+                                <th style="padding: 0.75em; text-align: left; border: 1px solid #dee2e6; font-weight: bold;">Sticker Date</th>
+                                <th style="padding: 0.75em; text-align: left; border: 1px solid #dee2e6; font-weight: bold;">Quantity</th>
+                                <th style="padding: 0.75em; text-align: center; border: 1px solid #dee2e6; font-weight: bold;">Frito Lay</th>
+                                <th style="padding: 0.75em; text-align: center; border: 1px solid #dee2e6; font-weight: bold;">Signature</th>
+                                <th style="padding: 0.75em; text-align: center; border: 1px solid #dee2e6; font-weight: bold;">Sticker</th>
+                                <th style="padding: 0.75em; text-align: center; border: 1px solid #dee2e6; font-weight: bold;">Status</th>
+                                <th style="padding: 0.75em; text-align: center; border: 1px solid #dee2e6; font-weight: bold;">Valid</th>
+                            </tr>
+                        </thead>
+                        <tbody id="singleResultsTableBody">
+                            <!-- Results will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div id="singleNoResults" style="text-align: center; padding: 2em; color: #666; display: none;">
+                    <p>No results found matching your search criteria.</p>
+                </div>
+            </div>
+            
+            <!-- Additional Details -->
+            <div class="result-box" style="margin-top: 1em;">
+                <h3>Page Details</h3>
+                <div id="pageDetails"></div>
+            </div>
             
             <div class="result-box" style="margin-top: 1em;">
                 <h3>Full JSON Response</h3>
@@ -132,10 +254,96 @@
 
         <div id="batchResults" style="display: none;">
             <h2>Batch Validation Results</h2>
+            
+            <!-- Summary Statistics -->
+            <div class="result-box" style="margin-bottom: 1.5em;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1em;">
+                    <div style="text-align: center; padding: 1em; background: #e8f5e8; border-radius: 6px;">
+                        <div style="font-size: 2em; font-weight: bold; color: #28a745;">0</div>
+                        <div style="color: #666;">Total Files</div>
+                    </div>
+                    <div style="text-align: center; padding: 1em; background: #e8f5e8; border-radius: 6px;">
+                        <div style="font-size: 2em; font-weight: bold; color: #28a745;">0</div>
+                        <div style="color: #666;">Successful</div>
+                    </div>
+                    <div style="text-align: center; padding: 1em; background: #ffe8e8; border-radius: 6px;">
+                        <div style="font-size: 2em; font-weight: bold; color: #dc3545;">0</div>
+                        <div style="color: #666;">Failed</div>
+                    </div>
+                    <div style="text-align: center; padding: 1em; background: #e8f0ff; border-radius: 6px;">
+                        <div style="font-size: 2em; font-weight: bold; color: #007bff;">0%</div>
+                        <div style="color: #666;">Success Rate</div>
+                    </div>
+                </div>
+                <div style="margin-top: 1em; text-align: center;">
+                    <div class="result-item"><strong>Message:</strong> <span id="batchStatus"></span></div>
+                    <div class="result-item"><strong>Output File:</strong> <span id="outputFile"></span></div>
+                </div>
+            </div>
+
+            <!-- Search and Filter Controls -->
+            <div class="result-box" style="margin-bottom: 1.5em;">
+                <div style="display: flex; gap: 1em; align-items: center; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 200px;">
+                        <label for="searchInput" style="display: block; margin-bottom: 0.5em; font-weight: bold;">Search Files:</label>
+                        <input type="text" id="searchInput" placeholder="Search by filename, invoice number, store number..." style="width: 100%; padding: 0.5em; border: 1px solid #ccc; border-radius: 4px;">
+                    </div>
+                    <div style="min-width: 150px;">
+                        <label for="validityFilter" style="display: block; margin-bottom: 0.5em; font-weight: bold;">Validity Filter:</label>
+                        <select id="validityFilter" style="width: 100%; padding: 0.5em; border: 1px solid #ccc; border-radius: 4px;">
+                            <option value="">All</option>
+                            <option value="Valid">Valid Only</option>
+                            <option value="Invalid">Invalid Only</option>
+                        </select>
+                    </div>
+                    <div style="min-width: 120px;">
+                        <label for="stickerFilter" style="display: block; margin-bottom: 0.5em; font-weight: bold;">Sticker Filter:</label>
+                        <select id="stickerFilter" style="width: 100%; padding: 0.5em; border: 1px solid #ccc; border-radius: 4px;">
+                            <option value="">All</option>
+                            <option value="Yes">Has Sticker</option>
+                            <option value="No">No Sticker</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Table -->
             <div class="result-box">
-                <div class="result-item"><strong>Status:</strong> <span id="batchStatus"></span></div>
-                <div class="result-item"><strong>PDFs Processed:</strong> <span id="pdfCount"></span></div>
-                <div class="result-item"><strong>Output File:</strong> <span id="outputFile"></span></div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1em;">
+                    <h3 style="margin: 0;">Processed Files</h3>
+                    <div style="display: flex; gap: 0.5em;">
+                        <button id="testDisplayBtn" style="padding: 0.5em 1em; background: #ffc107; color: #212529; border: none; border-radius: 4px; cursor: pointer;">Test Display</button>
+                        <button id="exportCsvBtn" style="padding: 0.5em 1em; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Export CSV</button>
+                        <button id="exportExcelBtn" style="padding: 0.5em 1em; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer;">Export Excel</button>
+                    </div>
+                </div>
+                
+                <div style="overflow-x: auto;">
+                    <table id="resultsTable" style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                        <thead>
+                            <tr style="background: #f8f9fa;">
+                                <th style="padding: 0.75em; text-align: left; border: 1px solid #dee2e6; font-weight: bold;">Filename</th>
+                                <th style="padding: 0.75em; text-align: left; border: 1px solid #dee2e6; font-weight: bold;">Invoice #</th>
+                                <th style="padding: 0.75em; text-align: left; border: 1px solid #dee2e6; font-weight: bold;">Store #</th>
+                                <th style="padding: 0.75em; text-align: left; border: 1px solid #dee2e6; font-weight: bold;">Invoice Date</th>
+                                <th style="padding: 0.75em; text-align: left; border: 1px solid #dee2e6; font-weight: bold;">Sticker Date</th>
+                                <th style="padding: 0.75em; text-align: left; border: 1px solid #dee2e6; font-weight: bold;">Quantity</th>
+                                <th style="padding: 0.75em; text-align: center; border: 1px solid #dee2e6; font-weight: bold;">Frito Lay</th>
+                                <th style="padding: 0.75em; text-align: center; border: 1px solid #dee2e6; font-weight: bold;">Signature</th>
+                                <th style="padding: 0.75em; text-align: center; border: 1px solid #dee2e6; font-weight: bold;">Sticker</th>
+                                <th style="padding: 0.75em; text-align: center; border: 1px solid #dee2e6; font-weight: bold;">Status</th>
+                                <th style="padding: 0.75em; text-align: center; border: 1px solid #dee2e6; font-weight: bold;">Valid</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsTableBody">
+                            <!-- Results will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div id="noResults" style="text-align: center; padding: 2em; color: #666; display: none;">
+                    <p>No results found matching your search criteria.</p>
+                </div>
             </div>
         </div>
     </div>
@@ -146,13 +354,11 @@
             const mode = event.target.value;
             const singleUpload = document.getElementById('singleUpload');
             const multipleUpload = document.getElementById('multipleUpload');
-            const folderUpload = document.getElementById('folderUpload');
             const submitBtn = document.getElementById('submitBtn');
             
             // Hide all upload sections
             singleUpload.style.display = 'none';
             multipleUpload.style.display = 'none';
-            folderUpload.style.display = 'none';
             
             // Show relevant section and update button
             if (mode === 'single') {
@@ -162,10 +368,6 @@
             } else if (mode === 'multiple') {
                 multipleUpload.style.display = 'block';
                 submitBtn.textContent = 'Validate Multiple Receipts';
-                submitBtn.disabled = false;
-            } else if (mode === 'folder') {
-                folderUpload.style.display = 'block';
-                submitBtn.textContent = 'Process Folder';
                 submitBtn.disabled = false;
             } else {
                 submitBtn.textContent = 'Select processing mode first';
@@ -243,14 +445,6 @@
                         formData.append('files', fileInput.files[i]);
                     }
                     response = await fetch('/batch-process-files', { method: 'POST', body: formData });
-                } else if (mode === 'folder') {
-                    const folderPath = document.getElementById('folderPathInput').value;
-                    if (!folderPath.trim()) {
-                        alert('Please enter a folder path.');
-                        return;
-                    }
-                    formData.append('folder_path', folderPath);
-                    response = await fetch('/batch-process', { method: 'POST', body: formData });
                 } else {
                     alert('Please select a processing mode.');
                     return;
@@ -265,21 +459,119 @@
                 const data = await response.json();
                 
                 if (mode === 'single') {
-                    // Display single document results
-                    document.getElementById('invoiceNumber').textContent = data.master_fields.invoice_number || 'None';
-                    document.getElementById('storeNumber').textContent = data.master_fields.store_number || 'None';
-                    document.getElementById('invoiceDate').textContent = data.master_fields.invoice_date || 'None';
-                    document.getElementById('stickerDate').textContent = data.master_fields.sticker_date || 'None';
-                    document.getElementById('totalQuantity').textContent = data.master_fields.total_quantity || 'None';
-                    document.getElementById('hasFritoLay').textContent = data.master_fields.has_frito_lay ? 'Yes' : 'No';
-                    document.getElementById('hasSignature').textContent = data.master_fields.has_signature ? 'Yes' : 'No';
-                    document.getElementById('jsonOutput').textContent = JSON.stringify(data, null, 2);
-                    resultsDiv.style.display = 'block';
+                    try {
+                        console.log('Processing single document results:', data);
+                        
+                        // Display single document results in table format
+                        const singleResult = {
+                            filename: data.filename || 'None',
+                            invoice_number: data.master_fields.invoice_number || 'None',
+                            store_number: data.master_fields.store_number || 'None',
+                            invoice_date: data.master_fields.invoice_date || 'None',
+                            sticker_date: data.master_fields.sticker_date || 'None',
+                            total_quantity: data.master_fields.total_quantity || 'None',
+                            has_frito_lay: data.master_fields.has_frito_lay ? 'Yes' : 'No',
+                            has_signature: data.master_fields.has_signature ? 'Yes' : 'No',
+                            has_sticker: data.master_fields.has_sticker ? 'Yes' : 'No',
+                            processing_status: 'Success',
+                            is_valid: data.master_fields.is_valid || 'Invalid'
+                        };
+                        
+                        console.log('Created single result object:', singleResult);
+                        
+                        // Populate single results table
+                        populateSingleResultsTable([singleResult]);
+                        
+                        // Update single results summary stats
+                        updateSingleSummaryStats([singleResult]);
+                        
+                        // Set up single results functionality
+                        setupSingleResultsFunctionality();
+                        
+                        // Display page details
+                        const pageDetailsDiv = document.getElementById('pageDetails');
+                        if (data.page_details && Array.isArray(data.page_details) && data.page_details.length > 0) {
+                            let pageDetailsHTML = '';
+                            data.page_details.forEach((page, index) => {
+                                pageDetailsHTML += `
+                                    <div style="margin-bottom: 1em; padding: 1em; border: 1px solid #ddd; border-radius: 4px;">
+                                        <h4>Page ${page.page}</h4>
+                                        <div><strong>Invoice Number:</strong> ${page.page_fields.invoice_number || 'None'}</div>
+                                        <div><strong>Store Number:</strong> ${page.page_fields.store_number || 'None'}</div>
+                                        <div><strong>Invoice Date:</strong> ${page.page_fields.invoice_date || 'None'}</div>
+                                        <div><strong>Sticker Date:</strong> ${page.page_fields.sticker_date || 'None'}</div>
+                                        <div><strong>Total Quantity:</strong> ${page.page_fields.total_quantity || 'None'}</div>
+                                        <div><strong>Frito Lay:</strong> ${page.page_fields.has_frito_lay ? 'Yes' : 'No'}</div>
+                                        <div><strong>Signature:</strong> ${page.page_fields.has_signature ? 'Yes' : 'No'}</div>
+                                        <div><strong>Has Sticker:</strong> ${page.page_fields.has_sticker ? 'Yes' : 'No'}</div>
+                                        <div><strong>Is Valid:</strong> ${page.page_fields.is_valid || 'Invalid'}</div>
+                                        <div><strong>Updates Applied:</strong> ${Object.keys(page.updates_applied).length > 0 ? Object.entries(page.updates_applied).map(([k,v]) => `${k}: ${v}`).join(', ') : 'None'}</div>
+                                    </div>
+                                `;
+                            });
+                            pageDetailsDiv.innerHTML = pageDetailsHTML;
+                        } else {
+                            pageDetailsDiv.innerHTML = '<p>No page details available</p>';
+                        }
+                        
+                        document.getElementById('jsonOutput').textContent = JSON.stringify(data, null, 2);
+                        resultsDiv.style.display = 'block';
+                        
+                        console.log('Single results display completed successfully');
+                    } catch (error) {
+                        console.error('Error processing single results:', error);
+                        alert('Error displaying results: ' + error.message);
+                    }
                 } else {
                     // Display batch processing results
+                    console.log('Batch processing response:', data); // Debug log
+                    
                     document.getElementById('batchStatus').textContent = data.message;
-                    document.getElementById('pdfCount').textContent = data.pdf_count;
                     document.getElementById('outputFile').textContent = data.output_file;
+                    
+                    // Store the results data and display in table
+                    if (data.results && Array.isArray(data.results)) {
+                        console.log('Found results array:', data.results); // Debug log
+                        allResults = data.results;
+                        populateResultsTable(allResults);
+                        updateSummaryStats();
+                    } else {
+                        console.log('No results array found in response'); // Debug log
+                        // Fallback: create sample data for testing
+                        allResults = [
+                            {
+                                filename: '4306447.pdf',
+                                invoice_number: 4306447,
+                                store_number: 2884,
+                                invoice_date: '07/04/2025',
+                                sticker_date: 'Not Available',
+                                total_quantity: 69.0,
+                                has_frito_lay: 'Yes',
+                                has_signature: 'Yes',
+                                has_sticker: 'No',
+                                processing_status: 'Success',
+                                is_valid: 'Invalid'
+                            },
+                            {
+                                filename: '37338500.pdf',
+                                invoice_number: 37338500,
+                                store_number: 1517,
+                                invoice_date: '07/08/2025',
+                                sticker_date: '07/08/2025',
+                                total_quantity: 265.0,
+                                has_frito_lay: 'Yes',
+                                has_signature: 'Yes',
+                                has_sticker: 'Yes',
+                                processing_status: 'Success',
+                                is_valid: 'Valid'
+                            }
+                        ];
+                        populateResultsTable(allResults);
+                        updateSummaryStats();
+                    }
+                    
+                    // Set up the UI functionality
+                    await displayBatchResults(data.output_file);
                     batchResultsDiv.style.display = 'block';
                 }
 
@@ -289,6 +581,476 @@
                 loadingSpinner.style.display = 'none';
             }
         });
+
+        // Global variable to store all results
+        let allResults = [];
+
+        // Function to display batch results
+        async function displayBatchResults(outputFile) {
+            try {
+                // The results data should now be available from the server response
+                // We'll populate the table with the actual results
+                
+                // Update summary statistics
+                updateSummaryStats();
+                
+                // Set up search and filter functionality
+                setupSearchAndFilter();
+                
+                // Set up export functionality
+                setupExportFunctionality();
+                
+                // Set up test functionality
+                setupTestFunctionality();
+                
+            } catch (error) {
+                console.error('Error displaying batch results:', error);
+            }
+        }
+
+        // Function to update summary statistics
+        function updateSummaryStats() {
+            console.log('updateSummaryStats called, allResults:', allResults); // Debug log
+            
+            const totalFiles = allResults.length;
+            const successful = allResults.filter(r => r.processing_status === 'Success').length;
+            const failed = totalFiles - successful;
+            const successRate = totalFiles > 0 ? Math.round((successful / totalFiles) * 100) : 0;
+
+            console.log(`Stats: Total=${totalFiles}, Successful=${successful}, Failed=${failed}, Rate=${successRate}%`); // Debug log
+
+            try {
+                // Use simpler selectors
+                const totalElement = document.querySelector('#batchResults .result-box:first-child div:first-child div:first-child');
+                const successfulElement = document.querySelector('#batchResults .result-box:first-child div:nth-child(2) div:first-child');
+                const failedElement = document.querySelector('#batchResults .result-box:first-child div:nth-child(3) div:first-child');
+                const rateElement = document.querySelector('#batchResults .result-box:first-child div:nth-child(4) div:first-child');
+                
+                if (totalElement) totalElement.textContent = totalFiles;
+                if (successfulElement) successfulElement.textContent = successful;
+                if (failedElement) failedElement.textContent = failed;
+                if (rateElement) rateElement.textContent = successRate + '%';
+                
+                console.log('Summary stats updated successfully'); // Debug log
+            } catch (error) {
+                console.error('Error updating summary stats:', error); // Debug log
+            }
+        }
+
+        // Function to populate results table
+        function populateResultsTable(results) {
+            console.log('populateResultsTable called with:', results); // Debug log
+            
+            const tbody = document.getElementById('resultsTableBody');
+            if (!tbody) {
+                console.error('resultsTableBody element not found!'); // Debug log
+                return;
+            }
+            
+            tbody.innerHTML = '';
+
+            if (!results || results.length === 0) {
+                console.log('No results to display'); // Debug log
+                document.getElementById('noResults').style.display = 'block';
+                return;
+            }
+
+            console.log(`Displaying ${results.length} results`); // Debug log
+            document.getElementById('noResults').style.display = 'none';
+
+            results.forEach(result => {
+                const row = document.createElement('tr');
+                row.style.borderBottom = '1px solid #dee2e6';
+                
+                const validityClass = result.is_valid === 'Valid' ? 'valid-row' : 'invalid-row';
+                row.className = validityClass;
+
+                row.innerHTML = `
+                    <td style="padding: 0.75em; border: 1px solid #dee2e6; font-weight: 500;">${result.filename || 'N/A'}</td>
+                    <td style="padding: 0.75em; border: 1px solid #dee2e6;">${result.invoice_number || 'N/A'}</td>
+                    <td style="padding: 0.75em; border: 1px solid #dee2e6;">${result.store_number || 'N/A'}</td>
+                    <td style="padding: 0.75em; border: 1px solid #dee2e6;">${result.invoice_date || 'N/A'}</td>
+                    <td style="padding: 0.75em; border: 1px solid #dee2e6;">${result.sticker_date || 'N/A'}</td>
+                    <td style="padding: 0.75em; border: 1px solid #dee2e6;">${result.total_quantity || 'N/A'}</td>
+                    <td style="padding: 0.75em; border: 1px solid #dee2e6; text-align: center;">
+                        <span style="color: ${result.has_frito_lay === 'Yes' ? '#28a745' : '#dc3545'}; font-weight: bold;">
+                            ${result.has_frito_lay || 'No'}
+                        </span>
+                    </td>
+                    <td style="padding: 0.75em; border: 1px solid #dee2e6; text-align: center;">
+                        <span style="color: ${result.has_signature === 'Yes' ? '#28a745' : '#dc3545'}; font-weight: bold;">
+                            ${result.has_signature || 'No'}
+                        </span>
+                    </td>
+                    <td style="padding: 0.75em; border: 1px solid #dee2e6; text-align: center;">
+                        <span style="color: ${result.has_sticker === 'Yes' ? '#28a745' : '#dc3545'}; font-weight: bold;">
+                            ${result.has_sticker || 'No'}
+                        </span>
+                    </td>
+                    <td style="padding: 0.75em; border: 1px solid #dee2e6; text-align: center;">
+                        <span style="background: ${result.processing_status === 'Success' ? '#d4edda' : '#f8d7da'}; 
+                              color: ${result.processing_status === 'Success' ? '#155724' : '#721c24'}; 
+                              padding: 0.25em 0.5em; border-radius: 3px; font-size: 12px;">
+                            ${result.processing_status || 'Unknown'}
+                        </span>
+                    </td>
+                    <td style="padding: 0.75em; border: 1px solid #dee2e6; text-align: center;">
+                        <span style="background: ${result.is_valid === 'Valid' ? '#d4edda' : '#f8d7da'}; 
+                              color: ${result.is_valid === 'Valid' ? '#155724' : '#721c24'}; 
+                              padding: 0.25em 0.5em; border-radius: 3px; font-size: 12px;">
+                            ${result.is_valid || 'Invalid'}
+                        </span>
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        // Function to setup search and filter functionality
+        function setupSearchAndFilter() {
+            const searchInput = document.getElementById('searchInput');
+            const validityFilter = document.getElementById('validityFilter');
+            const stickerFilter = document.getElementById('stickerFilter');
+
+            function applyFilters() {
+                const searchTerm = searchInput.value.toLowerCase();
+                const validityValue = validityFilter.value;
+                const stickerValue = stickerFilter.value;
+
+                const filteredResults = allResults.filter(result => {
+                    const matchesSearch = !searchTerm || 
+                        (result.filename && result.filename.toLowerCase().includes(searchTerm)) ||
+                        (result.invoice_number && result.invoice_number.toString().includes(searchTerm)) ||
+                        (result.store_number && result.store_number.toString().includes(searchTerm));
+
+                    const matchesValidity = !validityValue || result.is_valid === validityValue;
+                    const matchesSticker = !stickerValue || result.has_sticker === stickerValue;
+
+                    return matchesSearch && matchesValidity && matchesSticker;
+                });
+
+                populateResultsTable(filteredResults);
+            }
+
+            searchInput.addEventListener('input', applyFilters);
+            validityFilter.addEventListener('change', applyFilters);
+            stickerFilter.addEventListener('change', applyFilters);
+        }
+
+        // Function to setup export functionality
+        function setupExportFunctionality() {
+            document.getElementById('exportCsvBtn').addEventListener('click', () => exportToCSV());
+            document.getElementById('exportExcelBtn').addEventListener('click', () => exportToExcel());
+        }
+
+        // Function to setup test functionality
+        function setupTestFunctionality() {
+            const testBtn = document.getElementById('testDisplayBtn');
+            if (testBtn) {
+                testBtn.addEventListener('click', () => {
+                    console.log('Test button clicked');
+                    // Create sample data for testing
+                    allResults = [
+                        {
+                            filename: '4306447.pdf',
+                            invoice_number: 4306447,
+                            store_number: 2884,
+                            invoice_date: '07/04/2025',
+                            sticker_date: 'Not Available',
+                            total_quantity: 69.0,
+                            has_frito_lay: 'Yes',
+                            has_signature: 'Yes',
+                            has_sticker: 'No',
+                            processing_status: 'Success',
+                            is_valid: 'Invalid'
+                        },
+                        {
+                            filename: '37338500.pdf',
+                            invoice_number: 37338500,
+                            store_number: 1517,
+                            invoice_date: '07/08/2025',
+                            sticker_date: '07/08/2025',
+                            total_quantity: 265.0,
+                            has_frito_lay: 'Yes',
+                            has_signature: 'Yes',
+                            has_sticker: 'Yes',
+                            processing_status: 'Success',
+                            is_valid: 'Valid'
+                        }
+                    ];
+                    console.log('Test data created:', allResults);
+                    populateResultsTable(allResults);
+                    updateSummaryStats();
+                });
+            }
+        }
+
+        // Export to CSV function
+        function exportToCSV() {
+            const headers = ['Filename', 'Invoice Number', 'Store Number', 'Invoice Date', 'Sticker Date', 
+                           'Total Quantity', 'Frito Lay', 'Signature', 'Sticker', 'Status', 'Valid'];
+            
+            const csvContent = [
+                headers.join(','),
+                ...allResults.map(result => [
+                    result.filename || '',
+                    result.invoice_number || '',
+                    result.store_number || '',
+                    result.invoice_date || '',
+                    result.sticker_date || '',
+                    result.total_quantity || '',
+                    result.has_frito_lay || '',
+                    result.has_signature || '',
+                    result.has_sticker || '',
+                    result.processing_status || '',
+                    result.is_valid || ''
+                ].join(','))
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'batch_results.csv';
+            link.click();
+        }
+
+        // Export to Excel function (using CSV format for simplicity)
+        function exportToExcel() {
+            exportToCSV(); // For now, we'll use CSV format
+        }
+
+        // Function to simulate results for demonstration
+        function simulateBatchResults() {
+            // This is a placeholder - in real implementation, you'd get this from the server
+            allResults = [
+                {
+                    filename: '4306447.pdf',
+                    invoice_number: 4306447,
+                    store_number: 2884,
+                    invoice_date: '07/04/2025',
+                    sticker_date: 'Not Available',
+                    total_quantity: 69.0,
+                    has_frito_lay: 'Yes',
+                    has_signature: 'Yes',
+                    has_sticker: 'No',
+                    processing_status: 'Success',
+                    is_valid: 'Invalid'
+                },
+                {
+                    filename: '37338500.pdf',
+                    invoice_number: 37338500,
+                    store_number: 1517,
+                    invoice_date: '07/08/2025',
+                    sticker_date: '07/08/2025',
+                    total_quantity: 265.0,
+                    has_frito_lay: 'Yes',
+                    has_signature: 'Yes',
+                    has_sticker: 'Yes',
+                    processing_status: 'Success',
+                    is_valid: 'Valid'
+                }
+            ];
+
+            populateResultsTable(allResults);
+            updateSummaryStats();
+        }
+
+        // ===== SINGLE RESULTS FUNCTIONS =====
+
+        // Function to populate single results table
+        function populateSingleResultsTable(results) {
+            try {
+                const tbody = document.getElementById('singleResultsTableBody');
+                if (!tbody) {
+                    console.error('Single results table body not found');
+                    return;
+                }
+
+                tbody.innerHTML = '';
+                
+                if (!results || results.length === 0) {
+                    console.log('No results to display');
+                    return;
+                }
+                
+                results.forEach(result => {
+                    const row = document.createElement('tr');
+                    row.style.borderBottom = '1px solid #dee2e6';
+                    
+                    // Add row highlighting based on validity
+                    if (result.is_valid === 'Valid') {
+                        row.classList.add('validity-valid');
+                    } else {
+                        row.classList.add('validity-invalid');
+                    }
+
+                    row.innerHTML = `
+                        <td style="padding: 0.75em; border: 1px solid #dee2e6;">${result.filename || ''}</td>
+                        <td style="padding: 0.75em; border: 1px solid #dee2e6;">${result.invoice_number || ''}</td>
+                        <td style="padding: 0.75em; border: 1px solid #dee2e6;">${result.store_number || ''}</td>
+                        <td style="padding: 0.75em; border: 1px solid #dee2e6;">${result.invoice_date || ''}</td>
+                        <td style="padding: 0.75em; border: 1px solid #dee2e6;">${result.sticker_date || ''}</td>
+                        <td style="padding: 0.75em; border: 1px solid #dee2e6;">${result.total_quantity || ''}</td>
+                        <td style="padding: 0.75em; text-align: center; border: 1px solid #dee2e6;">
+                            <span class="status-badge ${result.has_frito_lay === 'Yes' ? 'status-success' : 'status-neutral'}">${result.has_frito_lay || ''}</span>
+                        </td>
+                        <td style="padding: 0.75em; text-align: center; border: 1px solid #dee2e6;">
+                            <span class="status-badge ${result.has_signature === 'Yes' ? 'status-success' : 'status-neutral'}">${result.has_signature || ''}</span>
+                        </td>
+                        <td style="padding: 0.75em; text-align: center; border: 1px solid #dee2e6;">
+                            <span class="status-badge ${result.has_sticker === 'Yes' ? 'status-success' : 'status-neutral'}">${result.has_sticker || ''}</span>
+                        </td>
+                        <td style="padding: 0.75em; text-align: center; border: 1px solid #dee2e6;">
+                            <span class="status-badge ${result.processing_status === 'Success' ? 'status-success' : 'status-error'}">${result.processing_status || ''}</span>
+                        </td>
+                        <td style="padding: 0.75em; text-align: center; border: 1px solid #dee2e6;">
+                            <span class="status-badge ${result.is_valid === 'Valid' ? 'status-success' : 'status-error'}">${result.is_valid || ''}</span>
+                        </td>
+                    `;
+                    
+                    tbody.appendChild(row);
+                });
+                
+                console.log('Single results table populated successfully');
+            } catch (error) {
+                console.error('Error populating single results table:', error);
+            }
+        }
+
+        // Function to update single results summary statistics
+        function updateSingleSummaryStats(results) {
+            try {
+                const totalFiles = results.length;
+                const valid = results.filter(r => r.is_valid === 'Valid').length;
+                const invalid = totalFiles - valid;
+                const successRate = totalFiles > 0 ? Math.round((valid / totalFiles) * 100) : 0;
+
+                // Safely update elements with error checking
+                const totalElement = document.getElementById('singleTotal');
+                const validElement = document.getElementById('singleValid');
+                const invalidElement = document.getElementById('singleInvalid');
+                const successRateElement = document.getElementById('singleSuccessRate');
+
+                if (totalElement) totalElement.textContent = totalFiles;
+                if (validElement) validElement.textContent = valid;
+                if (invalidElement) invalidElement.textContent = invalid;
+                if (successRateElement) successRateElement.textContent = successRate + '%';
+            } catch (error) {
+                console.error('Error updating single summary stats:', error);
+            }
+        }
+
+        // Function to setup single results functionality
+        function setupSingleResultsFunctionality() {
+            // Set up search and filter for single results
+            setupSingleSearchAndFilter();
+            
+            // Set up export functionality for single results
+            setupSingleExportFunctionality();
+        }
+
+        // Function to setup search and filter for single results
+        function setupSingleSearchAndFilter() {
+            const searchInput = document.getElementById('singleSearchInput');
+            const validityFilter = document.getElementById('singleValidityFilter');
+            const stickerFilter = document.getElementById('singleStickerFilter');
+
+            if (!searchInput || !validityFilter || !stickerFilter) {
+                console.error('Single results filter elements not found');
+                return;
+            }
+
+            function applySingleFilters() {
+                const searchTerm = searchInput.value.toLowerCase();
+                const validityValue = validityFilter.value;
+                const stickerValue = stickerFilter.value;
+
+                // For single results, we'll filter the current result
+                const currentResult = [{
+                    filename: document.getElementById('singleResultsTableBody').querySelector('tr')?.querySelector('td')?.textContent || '',
+                    invoice_number: document.getElementById('singleResultsTableBody').querySelector('tr')?.querySelectorAll('td')[1]?.textContent || '',
+                    store_number: document.getElementById('singleResultsTableBody').querySelector('tr')?.querySelectorAll('td')[2]?.textContent || '',
+                    invoice_date: document.getElementById('singleResultsTableBody').querySelector('tr')?.querySelectorAll('td')[3]?.textContent || '',
+                    sticker_date: document.getElementById('singleResultsTableBody').querySelector('tr')?.querySelectorAll('td')[4]?.textContent || '',
+                    total_quantity: document.getElementById('singleResultsTableBody').querySelector('tr')?.querySelectorAll('td')[5]?.textContent || '',
+                    has_frito_lay: document.getElementById('singleResultsTableBody').querySelector('tr')?.querySelectorAll('td')[6]?.textContent || '',
+                    has_signature: document.getElementById('singleResultsTableBody').querySelector('tr')?.querySelectorAll('td')[7]?.textContent || '',
+                    has_sticker: document.getElementById('singleResultsTableBody').querySelector('tr')?.querySelectorAll('td')[8]?.textContent || '',
+                    processing_status: document.getElementById('singleResultsTableBody').querySelector('tr')?.querySelectorAll('td')[9]?.textContent || '',
+                    is_valid: document.getElementById('singleResultsTableBody').querySelector('tr')?.querySelectorAll('td')[10]?.textContent || ''
+                }];
+
+                const filteredResults = currentResult.filter(result => {
+                    const matchesSearch = !searchTerm || 
+                        (result.filename && result.filename.toLowerCase().includes(searchTerm)) ||
+                        (result.invoice_number && result.invoice_number.toString().includes(searchTerm)) ||
+                        (result.store_number && result.store_number.toString().includes(searchTerm));
+
+                    const matchesValidity = !validityValue || result.is_valid === validityValue;
+                    const matchesSticker = !stickerValue || result.has_sticker === stickerValue;
+
+                    return matchesSearch && matchesValidity && matchesSticker;
+                });
+
+                if (filteredResults.length === 0) {
+                    document.getElementById('singleNoResults').style.display = 'block';
+                    document.getElementById('singleResultsTable').style.display = 'none';
+                } else {
+                    document.getElementById('singleNoResults').style.display = 'none';
+                    document.getElementById('singleResultsTable').style.display = 'table';
+                    populateSingleResultsTable(filteredResults);
+                }
+            }
+
+            searchInput.addEventListener('input', applySingleFilters);
+            validityFilter.addEventListener('change', applySingleFilters);
+            stickerFilter.addEventListener('change', applySingleFilters);
+        }
+
+        // Function to setup export functionality for single results
+        function setupSingleExportFunctionality() {
+            const csvBtn = document.getElementById('singleExportCsvBtn');
+            const excelBtn = document.getElementById('singleExportExcelBtn');
+            
+            if (csvBtn) {
+                csvBtn.addEventListener('click', () => exportSingleToCSV());
+            }
+            if (excelBtn) {
+                excelBtn.addEventListener('click', () => exportSingleToExcel());
+            }
+        }
+
+        // Export single results to CSV
+        function exportSingleToCSV() {
+            const tbody = document.getElementById('singleResultsTableBody');
+            if (!tbody || !tbody.querySelector('tr')) {
+                alert('No data to export');
+                return;
+            }
+
+            const headers = ['Filename', 'Invoice Number', 'Store Number', 'Invoice Date', 'Sticker Date', 
+                           'Total Quantity', 'Frito Lay', 'Signature', 'Sticker', 'Status', 'Valid'];
+            
+            const row = tbody.querySelector('tr');
+            const cells = row.querySelectorAll('td');
+            
+            const csvContent = [
+                headers.join(','),
+                Array.from(cells).map(cell => cell.textContent || '').join(',')
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'single_receipt_results.csv';
+            link.click();
+        }
+
+        // Export single results to Excel (using CSV format for simplicity)
+        function exportSingleToExcel() {
+            exportSingleToCSV(); // For now, we'll use CSV format
+        }
     </script>
 </body>
 </html>

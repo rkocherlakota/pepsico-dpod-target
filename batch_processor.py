@@ -17,7 +17,7 @@ class BatchProcessor:
         # Use default output path if not specified
         if output_excel is None:
             from config import INFERENCE_OUTPUT_DIR
-            self.output_excel = Path(INFERENCE_OUTPUT_DIR) / "batch_ocr_results.xlsx"
+            self.output_excel = Path(INFERENCE_OUTPUT_DIR) / "target_results.xlsx"
         else:
             self.output_excel = Path(output_excel)
         
@@ -129,7 +129,7 @@ class BatchProcessor:
                 )
                 excel_rows.append(excel_row)
         
-        # Convert to DataFrame and save to Excel
+        # Convert to DataFrame and save to Excel - append to existing file if it exists
         try:
             # Convert rows to dicts - ensure boolean values are strings
             row_dicts = []
@@ -139,12 +139,47 @@ class BatchProcessor:
                 # Convert boolean values to strings to avoid Excel TRUE/FALSE
                 for key, value in row_dict.items():
                     if isinstance(value, bool):
-                        row_dict[key] = "Yes" if value else "No"
+                        if key == 'has_sticker':
+                            # has_sticker should reflect the OD model result
+                            row_dict[key] = "Yes" if value else "No"
+                        elif key == 'has_signature':
+                            # has_signature should reflect the OCR result
+                            row_dict[key] = "Yes" if value else "No"
+                        elif key == 'has_frito_lay':
+                            # has_frito_lay should reflect the OCR result
+                            row_dict[key] = "Yes" if value else "No"
+                        else:
+                            # For other boolean fields, convert as usual
+                            row_dict[key] = "Yes" if value else "No"
                 
                 row_dicts.append(row_dict)
             
-            df = pd.DataFrame(row_dicts)
-            df.to_excel(self.output_excel, index=False)
+            # Check if output file already exists and append to it
+            if self.output_excel.exists():
+                try:
+                    # Read existing data
+                    existing_df = pd.read_excel(self.output_excel)
+                    print(f"Existing file found with {len(existing_df)} rows")
+                    
+                    # Append new data
+                    new_df = pd.DataFrame(row_dicts)
+                    combined_df = pd.concat([existing_df, new_df], ignore_index=True)
+                    
+                    # Remove duplicates based on filename to avoid processing the same file multiple times
+                    combined_df = combined_df.drop_duplicates(subset=['filename'], keep='last')
+                    
+                    # Save combined data
+                    combined_df.to_excel(self.output_excel, index=False)
+                    print(f"Appended {len(new_df)} new rows to existing file. Total rows: {len(combined_df)}")
+                except Exception as e:
+                    print(f"Error reading existing file, creating new one: {e}")
+                    df = pd.DataFrame(row_dicts)
+                    df.to_excel(self.output_excel, index=False)
+            else:
+                # Create new file
+                df = pd.DataFrame(row_dicts)
+                df.to_excel(self.output_excel, index=False)
+                print(f"Created new file with {len(df)} rows")
             
             print(f"Batch results saved to: {self.output_excel}")
             print(f"Processed {len(excel_rows)} files successfully")
@@ -157,9 +192,24 @@ class BatchProcessor:
                 for row in excel_rows:
                     row_dict = row.model_dump()
                     raw_data.append(row_dict)
-                df = pd.DataFrame(raw_data)
-                df.to_excel(self.output_excel, index=False)
-                print(f"Saved raw data to {self.output_excel}")
+                
+                # Use the same append logic for fallback
+                if self.output_excel.exists():
+                    try:
+                        existing_df = pd.read_excel(self.output_excel)
+                        new_df = pd.DataFrame(raw_data)
+                        combined_df = pd.concat([existing_df, new_df], ignore_index=True)
+                        combined_df = combined_df.drop_duplicates(subset=['filename'], keep='last')
+                        combined_df.to_excel(self.output_excel, index=False)
+                        print(f"Saved raw data to existing file {self.output_excel}")
+                    except Exception as e2:
+                        df = pd.DataFrame(raw_data)
+                        df.to_excel(self.output_excel, index=False)
+                        print(f"Saved raw data to new file {self.output_excel}")
+                else:
+                    df = pd.DataFrame(raw_data)
+                    df.to_excel(self.output_excel, index=False)
+                    print(f"Saved raw data to new file {self.output_excel}")
             except Exception as e2:
                 print(f"Failed to save even raw data: {e2}")
     

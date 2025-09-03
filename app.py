@@ -186,6 +186,8 @@ def upload_document():
                 pages = pages[:PDF_MAX_PAGES]
 
             detections_by_img_id = {}
+            sticker_flag = False
+            signature_flag = False
             for i, page in enumerate(pages):
                 # load using cv2
                 cv_img = cv2.cvtColor(np.array(page), cv2.COLOR_RGB2BGR)
@@ -193,18 +195,21 @@ def upload_document():
                 op_img, op_results = run_inference(cv_img_copy)
                 detections_by_img_id[i] = op_results
                 # print("op_results : ", op_results)
-                sticker_flag = False
-                signature_flag = False
+                
                 for det in op_results.get("detections", []):
                     label = det.get("label_text")
+                    print("label : ", label)
                     if label == "receipt_outline":
+                        print("label in receipt_outline : ", label)
                         bbox = det.get("bbox_xyxy")
                         x1, y1, x2, y2 = bbox
                         #crop the image
                         cv_img = cv_img[y1:y2, x1:x2]
                     elif label == "sticker":
+                        print("label in sticker : ", label)
                         sticker_flag = True
                     elif label == "signature":
+                        print("label in signature : ", label)
                         signature_flag = True
 
                 out_path = pages_dir / f"page_{i:03d}.png"
@@ -230,8 +235,10 @@ def upload_document():
 
     # Process images with OCR
     try:
-        # print("signature_flag : ", signature_flag)
+        print("sticker_flag : ", sticker_flag)
+        print("signature_flag : ", signature_flag)
         final_results = ocr_processor.process_images(image_paths, f.filename, sticker_flag, signature_flag)
+                                                   # (image_paths, f.filename, sticker_flag, signature_flag)
         # Convert Pydantic model to dict for JSON serialization
         return jsonify(final_results.model_dump()), 200
     except Exception as e:
@@ -260,9 +267,8 @@ def batch_process_files():
         output_dir = Path("inference_output")
         output_dir.mkdir(exist_ok=True)
         
-        # Create output Excel file
-        timestamp = int(time.time())
-        output_excel = output_dir / f"batch_results_{timestamp}.xlsx"
+        # Create output Excel file - use a single file for all batch results
+        output_excel = output_dir / "target_results.xlsx"
         
         # Process each PDF file individually
         all_results = []
@@ -271,69 +277,79 @@ def batch_process_files():
         
         for f in pdf_files:
             try:
-                # Create a unique temporary directory for this file
-                with tempfile.TemporaryDirectory() as temp_dir:
-                    # Save the PDF file
-                    pdf_path = os.path.join(temp_dir, secure_filename(f.filename))
-                    f.save(pdf_path)
-                    
-                    # Process the PDF using OCR processor directly
-                    from ocr_preprocessor import OCRProcessor
-                    ocr_processor = OCRProcessor()
-                    
-                    # Convert PDF to images
-                    from pdf2image import convert_from_path
-                    pages = convert_from_path(
-                        pdf_path,
-                        dpi=200,
-                        poppler_path=os.environ.get("POPPLER_PATH")
-                    )
-                    
-                    # Save pages as images
-                    image_paths = []
-                    # for i, page in enumerate(pages, start=1):
-                    #     img_path = os.path.join(temp_dir, f"page_{i:03d}.png")
-                    #     page.save(img_path, "PNG")
-                    #     image_paths.append(img_path)
-                    
-                    detections_by_img_id = {}
-                    for i, page in enumerate(pages, start=1):
-                        # load using cv2
-                        cv_img = cv2.cvtColor(np.array(page), cv2.COLOR_RGB2BGR)
-                        cv_img_copy = cv_img.copy()
-                        op_img, op_results = run_inference(cv_img_copy)
-                        detections_by_img_id[i] = op_results
-                        # print("op_results : ", op_results)
-                        sticker_flag = False
-                        signature_flag = False
-                        for det in op_results.get("detections", []):
-                            label = det.get("label_text")
-                            if label == "receipt_outline":
-                                bbox = det.get("bbox_xyxy")
-                                x1, y1, x2, y2 = bbox
-                                #crop the image
-                                cv_img = cv_img[y1:y2, x1:x2]
-                            elif label == "sticker":
-                                sticker_flag = True
-                            elif label == "signature":
-                                signature_flag = True
+                        # Create a unique temporary directory for this file
+                        with tempfile.TemporaryDirectory() as temp_dir:
+                            # Save the PDF file
+                            pdf_path = os.path.join(temp_dir, secure_filename(f.filename))
+                            f.save(pdf_path)
+                            
+                            # Process the PDF using OCR processor directly
+                            from ocr_preprocessor import OCRProcessor
+                            ocr_processor = OCRProcessor()
+                            
+                            # Convert PDF to images
+                            from pdf2image import convert_from_path
+                            pages = convert_from_path(
+                                pdf_path,
+                                dpi=200,
+                                poppler_path=os.environ.get("POPPLER_PATH")
+                            )
+                            
+                            # Save pages as images
+                            image_paths = []
+                            # for i, page in enumerate(pages, start=1):
+                            #     img_path = os.path.join(temp_dir, f"page_{i:03d}.png")
+                            #     page.save(img_path, "PNG")
+                            #     image_paths.append(img_path)
+                            
+                            detections_by_img_id = {}
+                            # Initialize flags for THIS specific PDF file
+                            file_sticker_flag = False
+                            file_signature_flag = False
+                            
+                            for i, page in enumerate(pages, start=1):
+                                # load using cv2
+                                cv_img = cv2.cvtColor(np.array(page), cv2.COLOR_RGB2BGR)
+                                cv_img_copy = cv_img.copy()
+                                op_img, op_results = run_inference(cv_img_copy)
+                                detections_by_img_id[i] = op_results
+                                # print("op_results : ", op_results)
+                                for det in op_results.get("detections", []):
+                                    label = det.get("label_text")
+                                    if label == "receipt_outline":
+                                        print("label in receipt_outline : ", label)
+                                        bbox = det.get("bbox_xyxy")
+                                        x1, y1, x2, y2 = bbox
+                                        #crop the image
+                                        cv_img = cv_img[y1:y2, x1:x2]
+                                    elif label == "sticker":
+                                        print("label in sticker : ", label)
+                                        file_sticker_flag = True
+                                    elif label == "signature":
+                                        print("label in signature : ", label)
+                                        file_signature_flag = True
+                                print("sticker_flag for this file: ", file_sticker_flag)
+                                print("signature_flag for this file: ", file_signature_flag)
+                                # out_path = pages_dir / f"page_{i:03d}.png"
+                                img_path = os.path.join(temp_dir, f"page_{i:03d}.png")
+                                img_path_box = os.path.join(temp_dir, f"page_{i:03d}_viz.png")
+                                # out_path_bbox = pages_dir / f"page_{i:03d}_viz.png"
+                                # print("img_path : ", img_path)
+                                cv2.imwrite(img_path, cv_img)
+                                cv2.imwrite(img_path_box, op_img)
+                                # page.save(out_path, "PNG")
+                                image_paths.append(str(img_path))
+                            
+                            # Process with OCR
+                            # result = ocr_processor.process_images(image_paths, f.filename)
+                            result = ocr_processor.process_images(image_paths, f.filename, file_sticker_flag, file_signature_flag)
 
-                        # out_path = pages_dir / f"page_{i:03d}.png"
-                        img_path = os.path.join(temp_dir, f"page_{i:03d}.png")
-                        img_path_box = os.path.join(temp_dir, f"page_{i:03d}_viz.png")
-                        # out_path_bbox = pages_dir / f"page_{i:03d}_viz.png"
-                        # print("img_path : ", img_path)
-                        cv2.imwrite(img_path, cv_img)
-                        cv2.imwrite(img_path_box, op_img)
-                        # page.save(out_path, "PNG")
-                        image_paths.append(str(img_path))
-                    
-                    # Process with OCR
-                    # result = ocr_processor.process_images(image_paths, f.filename)
-                    result = ocr_processor.process_images(image_paths, f.filename, sticker_flag, signature_flag)
+                            # Store the sticker and signature flags with the result for later use
+                            result.sticker_flag = file_sticker_flag
+                            result.signature_flag = file_signature_flag
 
-                    all_results.append(result)
-                    successful += 1
+                            all_results.append(result)
+                            successful += 1
                     
             except Exception as e:
                 print(f"Error processing {f.filename}: {e}")
@@ -356,8 +372,17 @@ def batch_process_files():
         excel_rows = []
         for result in all_results:
             try:
-                excel_row = ExcelRow.from_ocr_result(result, sticker_flag)
-                # print(f"excel_row : {excel_row}")
+                print("result : ", result)
+                # Use the sticker_flag stored with each individual result
+                if hasattr(result, 'sticker_flag'):
+                    result_sticker_flag = result.sticker_flag
+                else:
+                    # Fallback for failed results or results without stored flags
+                    result_sticker_flag = False
+                
+                print("sticker_flag for this result: ", result_sticker_flag)
+                excel_row = ExcelRow.from_ocr_result(result, result_sticker_flag)
+                print(f"excel_row : {excel_row}")
                 excel_rows.append(excel_row)
             except Exception as e:
                 print(f"Error creating ExcelRow: {e}")
@@ -368,7 +393,7 @@ def batch_process_files():
                 )
                 excel_rows.append(excel_row)
         
-        # Convert to DataFrame and save
+        # Convert to DataFrame and save - append to existing file if it exists
         import pandas as pd
         row_dicts = []
         for row in excel_rows:
@@ -376,16 +401,106 @@ def batch_process_files():
             # Convert boolean values to strings to avoid Excel TRUE/FALSE
             for key, value in row_dict.items():
                 if isinstance(value, bool):
-                    row_dict[key] = "Yes" if value else "No"
+                    if key == 'has_sticker':
+                        # has_sticker should reflect the OD model result
+                        row_dict[key] = "Yes" if value else "No"
+                    elif key == 'has_signature':
+                        # has_signature should reflect the OCR result
+                        row_dict[key] = "Yes" if value else "No"
+                    elif key == 'has_frito_lay':
+                        # has_frito_lay should reflect the OCR result
+                        row_dict[key] = "Yes" if value else "No"
+                    else:
+                        # For other boolean fields, convert as usual
+                        row_dict[key] = "Yes" if value else "No"
             row_dicts.append(row_dict)
-        # print(f"row_dicts : {row_dicts}")
-        df = pd.DataFrame(row_dicts)
-        df.to_excel(output_excel, index=False)
+        print(f"row_dicts : {row_dicts}")
         
+        # Check if output file already exists and append to it
+        if output_excel.exists():
+            try:
+                # Read existing data
+                existing_df = pd.read_excel(output_excel)
+                print(f"Existing file found with {len(existing_df)} rows")
+                
+                # Append new data
+                new_df = pd.DataFrame(row_dicts)
+                combined_df = pd.concat([existing_df, new_df], ignore_index=True)
+                
+                # Remove duplicates based on filename to avoid processing the same file multiple times
+                combined_df = combined_df.drop_duplicates(subset=['filename'], keep='last')
+                
+                # Save combined data
+                combined_df.to_excel(output_excel, index=False)
+                print(f"Appended {len(new_df)} new rows to existing file. Total rows: {len(combined_df)}")
+            except Exception as e:
+                print(f"Error reading existing file, creating new one: {e}")
+                df = pd.DataFrame(row_dicts)
+                df.to_excel(output_excel, index=False)
+        else:
+            # Create new file
+            df = pd.DataFrame(row_dicts)
+            df.to_excel(output_excel, index=False)
+            print(f"Created new file with {len(df)} rows")
+        
+        # Convert results to a format suitable for UI display
+        results_for_ui = []
+        for result in all_results:
+            try:
+                if hasattr(result, 'master_fields'):
+                    # Successful result
+                    results_for_ui.append({
+                        'filename': result.filename,
+                        'invoice_number': result.master_fields.invoice_number,
+                        'store_number': result.master_fields.store_number,
+                        'invoice_date': result.master_fields.invoice_date,
+                        'sticker_date': result.master_fields.sticker_date,
+                        'total_quantity': result.master_fields.total_quantity,
+                        'has_frito_lay': 'Yes' if result.master_fields.has_frito_lay else 'No',
+                        'has_signature': 'Yes' if result.master_fields.has_signature else 'No',
+                        'has_sticker': 'Yes' if result.master_fields.has_sticker else 'No',
+                        'processing_status': result.processing_status,
+                        'is_valid': result.master_fields.is_valid
+                    })
+                else:
+                    # Failed result
+                    results_for_ui.append({
+                        'filename': result.filename if hasattr(result, 'filename') else 'Unknown',
+                        'invoice_number': None,
+                        'store_number': None,
+                        'invoice_date': None,
+                        'sticker_date': None,
+                        'total_quantity': None,
+                        'has_frito_lay': 'No',
+                        'has_signature': 'No',
+                        'has_sticker': 'No',
+                        'processing_status': 'Failed',
+                        'is_valid': 'Invalid'
+                    })
+            except Exception as e:
+                print(f"Error formatting result for UI: {e}")
+                # Add a failed result entry
+                results_for_ui.append({
+                    'filename': 'Unknown',
+                    'invoice_number': None,
+                    'store_number': None,
+                    'invoice_date': None,
+                    'sticker_date': None,
+                    'total_quantity': None,
+                    'has_frito_lay': 'No',
+                    'has_signature': 'No',
+                    'has_sticker': 'No',
+                    'processing_status': 'Failed',
+                    'is_valid': 'Invalid'
+                })
+
         return jsonify({
             "message": f"Batch processing completed. Success: {successful}, Failed: {failed}",
             "pdf_count": len(pdf_files),
-            "output_file": str(output_excel)
+            "output_file": str(output_excel),
+            "results": results_for_ui,
+            "successful": successful,
+            "failed": failed
         }), 200
         
     except Exception as e:
