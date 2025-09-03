@@ -146,14 +146,24 @@ def run_inference(image):
 
         class_names = get_class_names(exp)
         vis_img, op_results = vis(image, bboxes, scores, cls_ids, conf=CONF_THRES, class_names=class_names)
+        
+        # Create detection results with class names
+        detection_results = []
+        for i, cls_id in enumerate(cls_ids):
+            if cls_id < len(class_names):
+                detection_results.append(class_names[int(cls_id)])
+        
+        print(f"Raw detection results: {detection_results}")
+        
         # saving img
         # save_path = os.path.splitext(os.path.basename(image))[0] + "_yolox.jpg"
         # cv2.imwrite(save_path, vis_img)
         # print(f"Saved: {save_path}")
     else:
         print("No objects detected above threshold.")
+        detection_results = []
     
-    return vis_img, op_results
+    return vis_img, detection_results
 
 
 def parse_args():

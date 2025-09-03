@@ -9,11 +9,8 @@ import io
 import os
 import pandas as pd
 from datetime import datetime
-import openpyxl  # Ensure this is installed
-<<<<<<< HEAD
+import openpyxl
 from openpyxl.styles import Alignment
-=======
->>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
 from pathlib import Path
 from config import SERVICE_ACCOUNT_PATH, INFERENCE_OUTPUT_DIR
 from models import InvoiceFields, PageResult, OCRResult, ExcelRow
@@ -26,11 +23,7 @@ class OCRProcessor:
     def __init__(self):
         self.client = vision.ImageAnnotatorClient(credentials=credentials)
 
-<<<<<<< HEAD
-    def extract_invoice_fields(self, full_text: str, signature_flag : bool, has_sticker: bool = False, is_valid: str = "Invalid") -> InvoiceFields:
-=======
-    def extract_invoice_fields(self, full_text: str) -> InvoiceFields:
->>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
+    def extract_invoice_fields(self, full_text: str, signature_flag: bool, has_sticker: bool = False, is_valid: str = "Invalid") -> InvoiceFields:
         lines = [line.strip() for line in full_text.splitlines() if line.strip()]
 
         def first_match(patterns, text, flags=re.IGNORECASE):
@@ -67,7 +60,6 @@ class OCRProcessor:
             match = re.search(pattern, full_text, flags=re.IGNORECASE)
             if match:
                 invoice_date = match.group(0)
-<<<<<<< HEAD
                 # Convert DD.MMM.YYYY format to MM/DD/YYYY format
                 invoice_date = self._convert_date_format(invoice_date)
                 break
@@ -93,15 +85,6 @@ class OCRProcessor:
 
         # Improved quantity patterns
         total_qty = None
-        # total_qty_patterns = [
-        #     r"\bTOTAL\s*(?:QTY|QUANTITY)\s*[:\-]?\s*([0-9,]+(?:\.[0-9]+)?)\b",
-        #     r"\b(?:QTY|QUANTITY)\s*TOTAL\s*[:\-]?\s*([0-9,]+(?:\.[0-9]+)?)\b",
-        #     r"\bTOTAL\s*[:\-]?\s*([0-9,]+(?:\.[0-9]+)?)\s*(?:QTY|QUANTITY)\b",
-        #     r"\bTOTAL\s*[:\-]?\s*([0-9,]+(?:\.[0-9]+)?)\b",
-        #     r"\b(?:QTY|QUANTITY)\s*[:\-]?\s*([0-9,]+(?:\.[0-9]+)?)\b",
-        #     r"\bAMOUNT\s*[:\-]?\s*([0-9,]+(?:\.[0-9]+)?)\b",
-        #     r"\bTOTAL\s*EACHES\s*SOLD\s*[:\-]?\s*([0-9,]+(?:\.[0-9]+)?)\b",  # Handle "TOTAL EACHES SOLD: 80"
-        # ]
         total_qty_patterns = [
             r"\bTOTAL\s*(?:QTY|QUANTITY)\s*[:\-]?\s*([-]?[0-9,]+(?:\.[0-9]+)?)\b",
             r"\b(?:QTY|QUANTITY)\s*TOTAL\s*[:\-]?\s*([-]?[0-9,]+(?:\.[0-9]+)?)\b",
@@ -110,24 +93,6 @@ class OCRProcessor:
             r"\b(?:QTY|QUANTITY)\s*[:\-]?\s*([-]?[0-9,]+(?:\.[0-9]+)?)\b",
             r"\bAMOUNT\s*[:\-]?\s*([-]?[0-9,]+(?:\.[0-9]+)?)\b",
             r"\bTOTAL\s*EACHES\s*SOLD\s*[:\-]?\s*([-]?[0-9,]+(?:\.[0-9]+)?)\b",  # Handle "TOTAL EACHES SOLD: 80"
-=======
-                break
-
-        sticker_date_pattern = r"\b(?:0?[1-9]|1[0-2])[\-/\.](?:0?[1-9]|[12][0-9]|3[01])[\-/\.]((?:20)?\d{2})\b"
-        sticker_match = re.search(sticker_date_pattern, full_text)
-        sticker_date = sticker_match.group(0) if sticker_match else None
-
-        # Improved quantity patterns
-        total_qty = None
-        total_qty_patterns = [
-            r"\bTOTAL\s*(?:QTY|QUANTITY)\s*[:\-]?\s*([0-9,]+(?:\.[0-9]+)?)\b",
-            r"\b(?:QTY|QUANTITY)\s*TOTAL\s*[:\-]?\s*([0-9,]+(?:\.[0-9]+)?)\b",
-            r"\bTOTAL\s*[:\-]?\s*([0-9,]+(?:\.[0-9]+)?)\s*(?:QTY|QUANTITY)\b",
-            r"\bTOTAL\s*[:\-]?\s*([0-9,]+(?:\.[0-9]+)?)\b",
-            r"\b(?:QTY|QUANTITY)\s*[:\-]?\s*([0-9,]+(?:\.[0-9]+)?)\b",
-            r"\bAMOUNT\s*[:\-]?\s*([0-9,]+(?:\.[0-9]+)?)\b",
-            r"\bTOTAL\s*EACHES\s*SOLD\s*[:\-]?\s*([0-9,]+(?:\.[0-9]+)?)\b",  # Handle "TOTAL EACHES SOLD: 80"
->>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
         ]
         
         # First try to find quantity in lines containing quantity keywords
@@ -136,512 +101,333 @@ class OCRProcessor:
                 candidate = first_match(total_qty_patterns, line)
                 if candidate:
                     try:
+                        # Remove commas and convert to float
                         total_qty = float(candidate.replace(',', ''))
-<<<<<<< HEAD
-                        # print("total_qty : ", total_qty)
-=======
->>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
-                    except ValueError:
-                        pass
-                    if total_qty is not None:
                         break
-        
-        # If not found, search in the entire text
+                    except ValueError:
+                        continue
+
+        # If no quantity found in specific lines, search the entire text
         if total_qty is None:
-            for pattern in total_qty_patterns:
-                candidate = first_match([pattern], full_text)
-                if candidate:
-                    try:
-                        total_qty = float(candidate.replace(',', ''))
-                    except ValueError:
-                        pass
-                    if total_qty is not None:
-                        break
+            candidate = first_match(total_qty_patterns, full_text)
+            if candidate:
+                try:
+                    total_qty = float(candidate.replace(',', ''))
+                except ValueError:
+                    pass
 
-        text_upper = full_text.upper()
-        has_frito_lay = any(k in text_upper for k in ["FRITO LAY", "FRITO-LAY", "FRITOLAY", "FRITO  LAY", "FRITO"])
+        # Check for Frito-Lay presence
+        has_frito_lay = bool(re.search(r"\bFRITO\s*LAY\b", full_text, re.IGNORECASE))
 
-<<<<<<< HEAD
+        # Check for signature presence (from OCR text)
         has_signature = signature_flag
-=======
-        has_signature = False
-        try:
-            normalized_lines = [ln.strip() for ln in full_text.splitlines()]
-            start_idx = next(
-                (i for i, ln in enumerate(normalized_lines)
-                 if "signifies proof of delivery for quantities only" in ln.lower()),
-                None,
-            )
-            end_idx = None
-            if start_idx is not None:
-                end_idx = next(
-                    (i for i, ln in enumerate(normalized_lines[start_idx + 1 :], start=start_idx + 1)
-                     if "sticker/store stamp" in ln.lower()),
-                    None,
-                )
-            if start_idx is not None and end_idx is not None and end_idx > start_idx + 1:
-                between = [ln for ln in normalized_lines[start_idx + 1 : end_idx] if ln]
-                if len(between) > 0:
-                    has_signature = True
-        except Exception:
-            has_signature = False
->>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
 
-        if total_qty is not None and abs(total_qty) < 1e-9:
-            total_qty = None
+        # Check for sticker presence (from OD model)
+        has_sticker = has_sticker
 
+        # Determine validity based on sticker presence
+        is_valid = "Valid" if has_sticker else "Invalid"
 
-        
-<<<<<<< HEAD
-        # Ensure all dates are in MM/DD/YYYY format
-        if invoice_date:
-            original_invoice_date = invoice_date
-            invoice_date = self._convert_date_format(invoice_date)
-            print(f"Date conversion: {original_invoice_date} -> {invoice_date}")
-        if sticker_date:
-            original_sticker_date = sticker_date
-            sticker_date = self._convert_date_format(sticker_date)
-            print(f"Date conversion: {original_sticker_date} -> {sticker_date}")
-        
-=======
->>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
-        # Create and validate InvoiceFields object
-        try:
-            return InvoiceFields(
-                invoice_number=invoice_number,
-                store_number=store_number,
-                invoice_date=invoice_date,
-                sticker_date=sticker_date,
-                total_quantity=total_qty,
-                has_frito_lay=has_frito_lay,
-                has_signature=has_signature,
-<<<<<<< HEAD
-                has_sticker=has_sticker,
-                is_valid=is_valid,
-=======
->>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
-            )
-        except Exception as e:
-            print(f"Validation error in extract_invoice_fields: {e}")
-            # Return a default object with validation errors logged
-            return InvoiceFields(
-                invoice_number=invoice_number,
-                store_number=store_number,
-                invoice_date=invoice_date,
-                sticker_date=sticker_date,
-                total_quantity=total_qty,
-                has_frito_lay=has_frito_lay,
-                has_signature=has_signature,
-<<<<<<< HEAD
-                has_sticker=has_sticker,
-                is_valid=is_valid,
-=======
->>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
-            )
+        return InvoiceFields(
+            invoice_number=invoice_number,
+            store_number=store_number,
+            invoice_date=invoice_date,
+            sticker_date=sticker_date,
+            total_quantity=total_qty,
+            has_frito_lay=has_frito_lay,
+            has_signature=has_signature,
+            has_sticker=has_sticker,
+            is_valid=is_valid
+        )
 
-    def _normalize_date_string_to_common_format(self, date_str: str) -> str | None:
-        if not date_str:
-            return None
-        candidate_formats = [
-            "%d.%b.%Y", "%d.%B.%Y", "%d %b %Y", "%d %B %Y",
-            "%m/%d/%Y", "%d/%m/%Y", "%Y-%m-%d",
-        ]
-        for fmt in candidate_formats:
-            try:
-                dt = datetime.strptime(date_str.strip(), fmt)
-                return dt.strftime("%Y-%m-%d")
-            except Exception:
-                continue
-        return None
-
-<<<<<<< HEAD
     def _convert_date_format(self, date_str: str) -> str:
-        """Convert various date formats to MM/DD/YYYY format"""
+        """Convert various date formats to MM/DD/YYYY"""
         if not date_str:
             return date_str
-        
-        # Handle DD.MMM.YYYY format (e.g., "04.Jul.2025" -> "07/04/2025")
+
+        # Handle DD.MMM.YYYY format (e.g., "04.Jul.2025")
         dd_mmm_yyyy_pattern = r"(\d{1,2})\.(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.(\d{4})"
         match = re.match(dd_mmm_yyyy_pattern, date_str, re.IGNORECASE)
         if match:
             day, month, year = match.groups()
+            month_num = self._month_to_number(month)
             print(f"DD.MMM.YYYY pattern matched: day={day}, month={month}, year={year}")
-            month_map = {
-                'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
-                'may': '05', 'jun': '06', 'jul': '07', 'aug': '08',
-                'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'
-            }
-            month_num = month_map.get(month.lower(), '01')
-            # Ensure two-digit format for day and month
-            day = day.zfill(2)
-            month_num = month_num.zfill(2)
-            # Convert DD.MMM.YYYY to MM/DD/YYYY (swap day and month)
-            result = f"{month_num}/{day}/{year}"
+            result = f"{month_num:02d}/{int(day):02d}/{year}"
             print(f"DD.MMM.YYYY conversion result: {result}")
             return result
-        
-        # Handle DD/MM/YYYY format (convert to MM/DD/YYYY)
-        # This pattern should only match when the first number is > 12 (indicating it's a day)
+
+        # Handle MM/DD/YYYY format
+        mm_dd_yyyy_pattern = r"(\d{1,2})/(\d{1,2})/(\d{4})"
+        match = re.match(mm_dd_yyyy_pattern, date_str)
+        if match:
+            month, day, year = match.groups()
+            # Check if this might actually be DD/MM/YYYY
+            if int(month) > 12 and int(day) <= 12:
+                # This is likely DD/MM/YYYY, convert to MM/DD/YYYY
+                result = f"{int(day):02d}/{int(month):02d}/{year}"
+            else:
+                # This is MM/DD/YYYY, ensure two-digit format
+                result = f"{int(month):02d}/{int(day):02d}/{year}"
+            print(f"MM/DD/YYYY pattern matched: month={month}, day={day}, year={year}")
+            print(f"MM/DD/YYYY formatting result: {result}")
+            return result
+
+        # Handle DD/MM/YYYY format
         dd_mm_yyyy_pattern = r"(\d{1,2})/(\d{1,2})/(\d{4})"
         match = re.match(dd_mm_yyyy_pattern, date_str)
         if match:
-            first_num, second_num, year = match.groups()
-            first_num_int = int(first_num)
-            second_num_int = int(second_num)
-            
-            # If first number > 12, it's likely a day (DD/MM/YYYY)
-            # If first number <= 12, it's likely a month (MM/DD/YYYY)
-            if first_num_int > 12:
-                day, month = first_num, second_num
-                print(f"DD/MM/YYYY pattern matched: day={day}, month={month}, year={year}")
-                # Ensure two-digit format for day and month
-                day = day.zfill(2)
-                month = month.zfill(2)
-                # Convert DD/MM/YYYY to MM/DD/YYYY (swap day and month)
-                result = f"{month}/{day}/{year}"
-                print(f"DD/MM/YYYY conversion result: {result}")
-                return result
+            day, month, year = match.groups()
+            # Check if this might actually be MM/DD/YYYY
+            if int(day) > 12 and int(month) <= 12:
+                # This is likely MM/DD/YYYY, convert to DD/MM/YYYY
+                result = f"{int(month):02d}/{int(day):02d}/{year}"
             else:
-                # This is likely MM/DD/YYYY format, just ensure consistent formatting
-                month, day = first_num, second_num
-                print(f"MM/DD/YYYY pattern matched: month={month}, day={day}, year={year}")
-                # Ensure two-digit format for day and month
-                day = day.zfill(2)
-                month = month.zfill(2)
-                result = f"{month}/{day}/{year}"
-                print(f"MM/DD/YYYY formatting result: {result}")
-                return result
-        
-        # Handle MMM DD, YYYY format (e.g., "Jul 04, 2025" -> "07/04/2025")
-        mmm_dd_yyyy_pattern = r"(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2}),?\s+(\d{4})"
-        match = re.match(mmm_dd_yyyy_pattern, date_str, re.IGNORECASE)
-        if match:
-            month, day, year = match.groups()
-            month_map = {
-                'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
-                'may': '05', 'jun': '06', 'jul': '07', 'aug': '08',
-                'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'
-            }
-            month_num = month_map.get(month.lower(), '01')
-            # Ensure two-digit format for day and month
-            day = day.zfill(2)
-            month_num = month_num.zfill(2)
-            return f"{month_num}/{day}/{year}"
-        
+                # This is DD/MM/YYYY, convert to MM/DD/YYYY
+                result = f"{int(month):02d}/{int(day):02d}/{year}"
+            print(f"DD/MM/YYYY pattern matched: day={day}, month={month}, year={year}")
+            print(f"DD/MM/YYYY formatting result: {result}")
+            return result
+
         # Handle YYYY-MM-DD format
         yyyy_mm_dd_pattern = r"(\d{4})-(\d{1,2})-(\d{1,2})"
         match = re.match(yyyy_mm_dd_pattern, date_str)
         if match:
             year, month, day = match.groups()
-            # Ensure two-digit format for day and month
-            day = day.zfill(2)
-            month = month.zfill(2)
-            return f"{month}/{day}/{year}"
-        
+            result = f"{int(month):02d}/{int(day):02d}/{year}"
+            print(f"YYYY-MM-DD pattern matched: year={year}, month={month}, day={day}")
+            print(f"YYYY-MM-DD formatting result: {result}")
+            return result
 
-        
-        # If no conversion needed, return as-is
+        # If no pattern matches, return as is
+        print(f"Date conversion: {date_str} -> {date_str}")
         return date_str
 
-    def save_to_excel(self, results: OCRResult, filename: str, sticker_flag:bool):
-        """
-        Saves the extracted OCR data to an Excel sheet.
-        It reads the existing file, appends the new data, and writes the full
-        DataFrame back to ensure correct column alignment.
-        """
-        excel_path = os.path.join(INFERENCE_OUTPUT_DIR, "target_results.xlsx")
+    def _month_to_number(self, month: str) -> int:
+        """Convert month name to number"""
+        month_map = {
+            'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
+            'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12
+        }
+        return month_map.get(month.lower(), 1)
 
-        # Create ExcelRow from OCRResult
-        try:
-            excel_row = ExcelRow.from_ocr_result(results, sticker_flag)
-            # print("excel_row from save_to_excel : ", excel_row)
-        except Exception as e:
-            print(f"Error creating ExcelRow from OCRResult: {e}")
-            # Create a failed row
-            excel_row = ExcelRow.from_failed_processing(filename, str(e))
-
-        # print("excel_row : ", excel_row)
-        # Convert to DataFrame - ensure boolean values are strings
-        row_dict = excel_row.model_dump()
-        # print("row_dict from save_to_excel after model_dump: ", row_dict)
-        # Convert boolean values to strings to avoid Excel TRUE/FALSE
-        for key, value in row_dict.items():
-            if isinstance(value, bool):
-                if key == 'has_sticker':
-                    # has_sticker should reflect the OD model result
-                    row_dict[key] = "Yes" if value else "No"
-                elif key == 'has_signature':
-                    # has_signature should reflect the OCR result
-                    row_dict[key] = "Yes" if value else "No"
-                elif key == 'has_frito_lay':
-                    # has_frito_lay should reflect the OCR result
-                    row_dict[key] = "Yes" if value else "No"
-                else:
-                    # For other boolean fields, convert as usual
-                    row_dict[key] = "Yes" if value else "No"
-                # print(f"from save_to_excel => {key} : {row_dict[key]}")
+    def process_images(self, image_paths: list, filename: str, sticker_flag: bool = False, signature_flag: bool = False) -> OCRResult:
+        """Process multiple images and return combined results"""
+        print(f"process_images called with {len(image_paths)} images, filename: {filename}, sticker_flag: {sticker_flag}, signature_flag: {signature_flag}")
+        all_fields = []
+        page_results = []
         
-        new_df = pd.DataFrame([row_dict])
-        # print("new_df start ocr results : ", new_df)
-
-        try:
-            if os.path.exists(excel_path):                # Read the existing data
-                existing_df = pd.read_excel(excel_path)
-                # print("existing_df : ", existing_df)
-=======
-    def save_to_excel(self, results: OCRResult, filename: str, process_type: str = "Single", 
-                     start_time: str = None, end_time: str = None, processing_time: float = None):
-        """
-        Saves the extracted OCR data to a single Excel sheet.
-        It reads the existing file, appends the new data, and writes the full
-        DataFrame back to ensure correct column alignment.
-        """
-        excel_path = os.path.join(INFERENCE_OUTPUT_DIR, "dpod_target_results.xlsx")
-
-        # Create ExcelRow from OCRResult
-        try:
-            excel_row = ExcelRow.from_ocr_result(results, process_type, start_time, end_time, processing_time)
-        except Exception as e:
-            print(f"Error creating ExcelRow from OCRResult: {e}")
-            # Create a failed row
-            excel_row = ExcelRow.from_failed_processing(filename, str(e), process_type, start_time, end_time, processing_time)
-
-        # Convert to DataFrame - ensure boolean values are strings
-        row_dict = excel_row.model_dump()
-        
-        # Convert boolean values to strings to avoid Excel TRUE/FALSE
-        for key, value in row_dict.items():
-            if isinstance(value, bool):
-                row_dict[key] = "Yes" if value else "No"
-        
-        new_df = pd.DataFrame([row_dict])
-
-        try:
-            if os.path.exists(excel_path):
-                # Read the existing data
-                existing_df = pd.read_excel(excel_path)
->>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
-                # Ensure the existing DataFrame has the correct columns
-                for col in excel_row.__fields__.keys():
-                    if col not in existing_df.columns:
-                        existing_df[col] = None
-                existing_df = existing_df[list(excel_row.__fields__.keys())]
-
-<<<<<<< HEAD
-                # Fix the total_quantity column type in existing data to preserve "NA" values
-                if 'total_quantity' in existing_df.columns:
-                    # Replace any NaN values with "NA" in existing data, but keep numeric values as numbers
-                    existing_df['total_quantity'] = existing_df['total_quantity'].fillna("NA")
-
-                # Append the new DataFrame
-                combined_df = pd.concat([existing_df, new_df], ignore_index=True)
-            else:
-                # print("new_df : ", new_df)
-                # If the file doesn't exist, start with the new data
-                combined_df = new_df
-
-            # print("combined_df ocr results : ", combined_df)
-
-            # Write the entire combined DataFrame back to the Excel file
-            # Ensure total_quantity column preserves "NA" values without converting numeric values to strings
-            if 'total_quantity' in combined_df.columns:
-                # Replace any NaN values with "NA", but preserve the original data types
-                combined_df['total_quantity'] = combined_df['total_quantity'].fillna("NA")
-            
-            # Use ExcelWriter to apply consistent right alignment to total_quantity column
-            with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
-                combined_df.to_excel(writer, index=False, sheet_name='Sheet1')
-                
-                # Get the worksheet to apply formatting
-                worksheet = writer.sheets['Sheet1']
-                
-                # Apply right alignment to total_quantity column if it exists
-                if 'total_quantity' in combined_df.columns:
-                    # Find the column index for total_quantity
-                    col_idx = combined_df.columns.get_loc('total_quantity') + 1  # +1 because Excel columns are 1-indexed
-                    # Apply right alignment to the entire column (including header)
-                    for row in range(1, len(combined_df) + 2):  # +2 because Excel rows are 1-indexed and we have header
-                        cell = worksheet.cell(row=row, column=col_idx)
-                        cell.alignment = openpyxl.styles.Alignment(horizontal='right')
-=======
-                # Append the new DataFrame
-                combined_df = pd.concat([existing_df, new_df], ignore_index=True)
-            else:
-                # If the file doesn't exist, start with the new data
-                combined_df = new_df
-
-            # Write the entire combined DataFrame back to the Excel file
-            combined_df.to_excel(excel_path, index=False)
->>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
-            
-            print(f"Data for {filename} successfully saved to {excel_path}")
-        except Exception as e:
-            print(f"Error saving to Excel: {e}")
-
-<<<<<<< HEAD
-    def _read_fields_from_excel(self, filename: str) -> tuple[bool, str]:
-        """Read has_sticker and is_valid values from target_results.xlsx file"""
-        try:
-            excel_path = Path(INFERENCE_OUTPUT_DIR) / "target_results.xlsx"
-            if not excel_path.exists():
-                print(f"Excel file {excel_path} not found, using default values")
-                return False, "Invalid"
-            
-            # Read the Excel file
-            df = pd.read_excel(excel_path)
-            
-            # Look for the row with matching filename
-            if 'filename' in df.columns:
-                matching_row = df[df['filename'] == filename]
-                if not matching_row.empty:
-                    has_sticker = False
-                    is_valid = "Invalid"
-                    
-                    # Check if has_sticker column exists
-                    if 'has_sticker' in df.columns:
-                        has_sticker_value = matching_row.iloc[0]['has_sticker']
-                        # Convert to boolean
-                        if isinstance(has_sticker_value, bool):
-                            has_sticker = has_sticker_value
-                        elif isinstance(has_sticker_value, str):
-                            has_sticker = has_sticker_value.upper() in ['TRUE', 'YES', '1', 'Y']
-                        elif isinstance(has_sticker_value, (int, float)):
-                            has_sticker = bool(has_sticker_value)
-                    
-                    # Check if is_valid column exists
-                    if 'is_valid' in df.columns:
-                        is_valid_value = matching_row.iloc[0]['is_valid']
-                        if isinstance(is_valid_value, str):
-                            is_valid = is_valid_value
-                        else:
-                            is_valid = "Invalid"
-                    
-                    return has_sticker, is_valid
-                else:
-                    print(f"Filename {filename} not found in Excel file")
-                    return False, "Invalid"
-            else:
-                print(f"filename column not found in Excel file")
-                return False, "Invalid"
-                
-        except Exception as e:
-            print(f"Error reading fields from Excel: {e}")
-            return False, "Invalid"
-
-    def process_images(self, image_paths: list, filename: str, sticker_flag: bool, signature_flag:bool) -> OCRResult:
-=======
-    def process_images(self, image_paths: list, filename: str) -> OCRResult:
->>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
-        master_fields = InvoiceFields()
-        fields_found = set()
-        all_results = []
-        
-<<<<<<< HEAD
-        # Use sticker_flag from OD model detection instead of reading from Excel
-        # This ensures we get real-time sticker detection from the model
-        
-=======
->>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
-        for page_num, image_path in enumerate(image_paths):
+        for i, image_path in enumerate(image_paths):
             try:
-                with io.open(image_path, 'rb') as image_file:
+                # Read image
+                with open(image_path, 'rb') as image_file:
                     content = image_file.read()
+                
+                # Create image object
                 image = vision.Image(content=content)
-                response = self.client.document_text_detection(image=image)
-                full_text = response.full_text_annotation.text if response.full_text_annotation else ""
                 
-<<<<<<< HEAD
-                # Pass sticker_flag from OD model to extract_invoice_fields
-                page_fields = self.extract_invoice_fields(full_text, signature_flag, sticker_flag, "Invalid")
+                # Perform OCR
+                response = self.client.text_detection(image=image)
                 
-                # Set has_sticker based on OD model detection
-                page_fields.has_sticker = sticker_flag
-=======
-                page_fields = self.extract_invoice_fields(full_text)
->>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
+                if response.error.message:
+                    raise Exception(
+                        '{}\nFor more info on error messages, check: '
+                        'https://cloud.google.com/apis/design/errors'.format(
+                            response.error.message))
                 
-                page_updates = {}
-                # Handle all fields - update if new value is better (not None)
-                for field_name, field_value in page_fields.model_dump().items():
-                    current_value = getattr(master_fields, field_name)
+                # Extract text
+                texts = response.text_annotations
+                if texts:
+                    full_text = texts[0].description
                     
-                    # Update if:
-                    # 1. Current value is None and new value is not None, OR
-                    # 2. Current value is None/empty and new value is not None/empty
-                    should_update = False
+                    # Extract fields for this page
+                    page_fields = self.extract_invoice_fields(full_text, signature_flag, sticker_flag)
+                    all_fields.append(page_fields)
                     
-                    if current_value is None and field_value is not None:
-                        should_update = True
-                    elif isinstance(current_value, str) and not current_value.strip() and field_value is not None:
-                        should_update = True
-                    elif isinstance(current_value, (int, float)) and current_value == 0 and field_value is not None and field_value != 0:
-                        should_update = True
+                    # Create page result
+                    page_result = PageResult(
+                        page=i + 1,
+                        page_fields=page_fields,
+                        updates_applied={}  # You can add update tracking here
+                    )
+                    page_results.append(page_result)
                     
-                    if should_update:
-                        setattr(master_fields, field_name, field_value)
-                        if field_name not in fields_found:
-                            fields_found.add(field_name)
-                        page_updates[field_name] = "UPDATED"
-                    else:
-                        page_updates[field_name] = "SKIPPED"
-                
-                page_result = PageResult(
-                    page=page_num + 1,
-                    page_fields=page_fields,
-                    updates_applied=page_updates
-                )
-                all_results.append(page_result)
-            
+                else:
+                    # No text found
+                    empty_fields = InvoiceFields(
+                        invoice_number=None,
+                        store_number=None,
+                        invoice_date=None,
+                        sticker_date=None,
+                        total_quantity=None,
+                        has_frito_lay=False,
+                        has_signature=signature_flag,
+                        has_sticker=sticker_flag,
+                        is_valid="Invalid"
+                    )
+                    all_fields.append(empty_fields)
+                    
+                    page_result = PageResult(
+                        page=i + 1,
+                        page_fields=empty_fields,
+                        updates_applied={}
+                    )
+                    page_results.append(page_result)
+                    
             except Exception as e:
                 print(f"Error processing image {image_path}: {e}")
-                continue
-<<<<<<< HEAD
+                # Create error page result
+                error_fields = InvoiceFields(
+                    invoice_number=None,
+                    store_number=None,
+                    invoice_date=None,
+                    sticker_date=None,
+                    total_quantity=None,
+                    has_frito_lay=False,
+                    has_signature=signature_flag,
+                    has_sticker=sticker_flag,
+                    is_valid="Invalid"
+                )
+                all_fields.append(error_fields)
+                
+                page_result = PageResult(
+                    page=i + 1,
+                    page_fields=error_fields,
+                    updates_applied={}
+                )
+                page_results.append(page_result)
         
-        # Set has_sticker and is_valid based on OD model detection
-        master_fields.has_sticker = sticker_flag
+        # Combine fields from all pages
+        master_fields = self._combine_fields(all_fields)
         
-        # If no sticker detected by OD model, set sticker_date to "Not Available"
+        # Set sticker_date to "Not Available" if no sticker detected
         if not sticker_flag:
             master_fields.sticker_date = "Not Available"
         
-        master_fields.is_valid = "Valid" if (sticker_flag and signature_flag) else "Invalid"
-        if sticker_flag:
-            fields_found.add('has_sticker')
-        if master_fields.is_valid:
-            fields_found.add('is_valid')
+        # Create final result
+        result = OCRResult(
+            filename=filename,
+            total_pages=len(image_paths),
+            master_fields=master_fields,
+            fields_found=self._get_found_fields(master_fields),
+            page_details=page_results,
+            processing_status="Success",
+            error_message="",
+            sticker_flag=sticker_flag,
+            signature_flag=signature_flag
+        )
         
-=======
+        print(f"OCRResult created successfully: {result.filename}, status: {result.processing_status}")
+        print(f"Master fields: {result.master_fields}")
+        
+        return result
 
+    def _combine_fields(self, all_fields: list) -> InvoiceFields:
+        """Combine fields from multiple pages, prioritizing non-None values"""
+        if not all_fields:
+            return InvoiceFields()
+        
+        # Start with the first set of fields
+        combined = all_fields[0]
+        
+        # Update with non-None values from other pages
+        for fields in all_fields[1:]:
+            if fields.invoice_number and not combined.invoice_number:
+                combined.invoice_number = fields.invoice_number
+            if fields.store_number and not combined.store_number:
+                combined.store_number = fields.store_number
+            if fields.invoice_date and not combined.invoice_date:
+                combined.invoice_date = fields.invoice_date
+            if fields.sticker_date and not combined.sticker_date:
+                combined.sticker_date = fields.sticker_date
+            if fields.total_quantity is not None and combined.total_quantity is None:
+                combined.total_quantity = fields.total_quantity
+            if fields.has_frito_lay and not combined.has_frito_lay:
+                combined.has_frito_lay = fields.has_frito_lay
+            if fields.has_signature and not combined.has_signature:
+                combined.has_signature = fields.has_signature
+            if fields.has_sticker and not combined.has_sticker:
+                combined.has_sticker = fields.has_sticker
+        
+        return combined
 
+    def _get_found_fields(self, fields: InvoiceFields) -> list:
+        """Get list of fields that were successfully extracted"""
+        found = []
+        if fields.invoice_number:
+            found.append('invoice_number')
+        if fields.store_number:
+            found.append('store_number')
+        if fields.invoice_date:
+            found.append('invoice_date')
+        if fields.sticker_date and fields.sticker_date != "Not Available":
+            found.append('sticker_date')
+        if fields.total_quantity is not None:
+            found.append('total_quantity')
+        if fields.has_frito_lay:
+            found.append('has_frito_lay')
+        if fields.has_signature:
+            found.append('has_signature')
+        if fields.has_sticker:
+            found.append('has_sticker')
+        if fields.is_valid:
+            found.append('is_valid')
+        return found
 
->>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
-        # Create and validate OCRResult
+    def save_to_excel(self, result: OCRResult, filename: str, sticker_flag: bool):
+        """Save OCR results to Excel file"""
         try:
-            final_results = OCRResult(
-                filename=filename,
-                total_pages=len(image_paths),
-                master_fields=master_fields,
-                fields_found=list(fields_found),
-                page_details=all_results,
-                processing_status="Success"
-            )
+            # Create output directory if it doesn't exist
+            output_dir = Path(INFERENCE_OUTPUT_DIR)
+            output_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Use consistent filename
+            excel_path = output_dir / "target_results.xlsx"
+            
+            # Create Excel row
+            excel_row = ExcelRow.from_ocr_result(result, sticker_flag)
+            
+            # Convert to dictionary
+            row_dict = excel_row.model_dump()
+            
+            # Convert boolean values to strings to avoid Excel TRUE/FALSE
+            for key, value in row_dict.items():
+                if isinstance(value, bool):
+                    if key == 'has_sticker':
+                        row_dict[key] = "Yes" if value else "No"
+                    elif key == 'has_signature':
+                        row_dict[key] = "Yes" if value else "No"
+                    elif key == 'has_frito_lay':
+                        row_dict[key] = "Yes" if value else "No"
+                    else:
+                        row_dict[key] = "Yes" if value else "No"
+            
+            # Check if file exists
+            if excel_path.exists():
+                try:
+                    # Read existing data
+                    existing_df = pd.read_excel(excel_path)
+                    
+                    # Append new data
+                    new_df = pd.DataFrame([row_dict])
+                    combined_df = pd.concat([existing_df, new_df], ignore_index=True)
+                    
+                    # Remove duplicates based on filename
+                    combined_df = combined_df.drop_duplicates(subset=['filename'], keep='last')
+                    
+                    # Save combined data
+                    combined_df.to_excel(excel_path, index=False)
+                    print(f"Data for {filename} successfully saved to {excel_path}")
+                    
+                except Exception as e:
+                    print(f"Error reading existing file, creating new one: {e}")
+                    df = pd.DataFrame([row_dict])
+                    df.to_excel(excel_path, index=False)
+                    print(f"Created new file with data for {filename}")
+            else:
+                # Create new file
+                df = pd.DataFrame([row_dict])
+                df.to_excel(excel_path, index=False)
+                print(f"Created new file with data for {filename}")
+                
         except Exception as e:
-            print(f"Error creating OCRResult: {e}")
-            # Create a failed result
-            final_results = OCRResult(
-                filename=filename,
-                total_pages=len(image_paths),
-                master_fields=master_fields,
-                fields_found=list(fields_found),
-                page_details=all_results,
-                processing_status="Failed",
-                error_message=str(e)
-            )
-        
-<<<<<<< HEAD
-        self.save_to_excel(final_results, filename, sticker_flag)
-=======
-        self.save_to_excel(final_results, filename)
->>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
-
-        return final_results
+            print(f"Error saving to Excel: {e}")

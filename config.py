@@ -3,17 +3,14 @@
 import os
 
 # Path to your Google Cloud Vision service account file
-<<<<<<< HEAD
 EXP_FILE = "yolox_od/exps/example/custom/yolox_s.py"
-CKPT_PATH = "yolox_od/last_mosaic_epoch_ckpt_100eps.pth",
+CKPT_PATH = "yolox_od/last_mosaic_epoch_ckpt_100eps.pth"
 # image_path="test.jpeg",
-CONF_THRES = 0.25,
-NMS_THRES = 0.65,
-DEVICE = "cpu",
+CONF_THRES = 0.25
+NMS_THRES = 0.65
+DEVICE = "cpu"
 
 # Path to your Google Cloud Vision service account file
-=======
->>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
 SERVICE_ACCOUNT_PATH = "global-lexicon-271715-bbd471224971_PROD.json"
 
 # Output directories
@@ -24,4 +21,4 @@ TEMP_UPLOAD_DIR = "uploads"
 # Ensure output directories exist
 os.makedirs(INFERENCE_OUTPUT_DIR, exist_ok=True)
 os.makedirs(ANNOTATED_IMAGES_DIR, exist_ok=True)
-os.makedirs(TEMP_UPLOAD_DIR, exist_ok=True)
+os.makedirs(INFERENCE_OUTPUT_DIR, exist_ok=True)

@@ -8,18 +8,12 @@ A Flask web application that validates delivery receipts by extracting key infor
 - **Batch Processing**: Process multiple delivery receipts from a folder at once
 - **Automatic PDF to image conversion** using Poppler
 - **Google Cloud Vision OCR** text extraction
-<<<<<<< HEAD
-- **Excel Output**: Results automatically saved to Excel files with structured data
-=======
-- **Single Excel Output**: All results automatically saved to a single Excel file (`dpod_target_results.xlsx`) with structured data
->>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
-- **Data Validation**: Pydantic models ensure data integrity and consistency
+- **Excel Output**: Results automatically saved to Excel files with structured data- **Data Validation**: Pydantic models ensure data integrity and consistency
 - **Progress Tracking**: Real-time progress updates during batch processing
 - **Error Handling**: Comprehensive error handling with validation feedback
 
 ### Extracted Fields
 
-<<<<<<< HEAD
 - Invoice Number
 - Store Number
 - Invoice Date
@@ -27,36 +21,7 @@ A Flask web application that validates delivery receipts by extracting key infor
 - Total Quantity
 - Frito Lay presence
 - Signature presence
-- Receipt validity
-=======
-- **Filename**: Name of the processed file
-- **Invoice Number**: Extracted invoice number
-- **Store Number**: Extracted store number
-- **Invoice Date**: Extracted invoice date
-- **Sticker Date**: Extracted sticker date
-- **Total Quantity**: Extracted total quantity
-- **Frito Lay**: Whether Frito Lay was found (Yes/No)
-- **Signature**: Whether signature was found (Yes/No)
-- **Sticker**: Whether sticker date was found (Yes/No)
-- **Valid**: Document validity (Valid/Invalid)
-- **Processing Status**: Success/Failed/Partial
-- **Error Message**: Error details if processing failed
-- **Process Type**: Type of processing (Single/Multiple/Folder)
-- **Start Time**: Processing start timestamp (YYYY-MM-DD HH:MM:SS)
-- **End Time**: Processing end timestamp (YYYY-MM-DD HH:MM:SS)
-- **Processing Time**: Processing duration in seconds
-
-### Output File
-
-All results are saved to a single Excel file: `inference_output/dpod_target_results.xlsx`
-
-- **Single Receipt Processing**: Results are appended to the existing file
-- **Batch Processing**: All results are appended to the same file
-- **Data Consistency**: All processing sessions maintain the same file structure
-- **Easy Management**: One file contains all validation results
->>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
-
-## Prerequisites
+- Receipt validity## Prerequisites
 
 - Python 3.9+
 - Google Cloud Vision API credentials
@@ -127,13 +92,7 @@ SERVICE_ACCOUNT_PATH = "your-credentials-file.json"
    - Choose files or enter folder path containing your delivery receipt PDFs
    - Click "Validate Multiple Receipts" or "Process Folder"
    - Wait for processing to complete
-<<<<<<< HEAD
-   - Results will be saved to `inference_output/target_results.xlsx`
-=======
-   - Results will be saved to `inference_output/dpod_target_results.xlsx`
->>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
-
-### Method 3: Command Line Interface (Batch Processing)
+- Results will be saved to `inference_output/target_results.xlsx`### Method 3: Command Line Interface (Batch Processing)
 
 Use the standalone batch processor script for delivery receipts:
 
@@ -212,13 +171,7 @@ pepsico_ocr/
 │   └── index.html        # Web interface
 ├── uploads/              # Uploaded files (auto-created)
 ├── inference_output/     # OCR results (auto-created)
-<<<<<<< HEAD
-│   └── target_results.xlsx  # All processing results (individual and batch)
-=======
-│   ├── ocr_results.xlsx  # Single document results
-│   └── batch_ocr_results.xlsx  # Batch processing results
->>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
-└── annotated_images/     # Processed images (auto-created)
+│   └── target_results.xlsx  # All processing results (individual and batch)└── annotated_images/     # Processed images (auto-created)
 ```
 
 ## Environment Variables
