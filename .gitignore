@@ -30,7 +30,8 @@ MANIFEST
 
 # Virtual environments
 target_dpod/
-venv/
+*venv*/
+venv_py310/
 env/
 ENV/
 env.bak/
@@ -67,7 +68,6 @@ Thumbs.db
 *.log
 logs/
 
-<<<<<<< HEAD
 # Model checkpoints and weights
 *.pth
 *.pkl
@@ -82,10 +82,7 @@ logs/
 
 # Training outputs
 YOLOX_outputs/
-YOLOX_outputs/
 
-=======
->>>>>>> b4a4b82c9d6889d401a8a9f102c262e753bed152
 # Environment variables
 .env
 .env.local

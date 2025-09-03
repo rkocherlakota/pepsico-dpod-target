@@ -1,9 +1,0 @@
-# Minimal requirements for YOLOX
-torch>=1.7
-torchvision
-torchaudio
-numpy
-opencv-python
-Pillow
-pycocotools>=2.0.2
-
